@@ -67,16 +67,27 @@ local baseRequest = {
 
 --## Main Runtime ##--
 
-term.clear()
-term.setCursorPos(1,1)
+local args = { ... }
+
 navigateTreeJSON(makeCallDir(""), "")
 
+term.clear()
+term.setCursorPos(1,1)
+
+if (args[1] == "master") then
+  error()
+end
+
 if (pocket) then
-  fs.move("TABLET/*", "/")
+  fs.delete("blacklist")
+  fs.delete("DISK")
+  shell.run("mv TABLET/* /")
 elseif (turtle) then
-  fs.move("TURTLE/*", "/")
+  fs.delete("DISK")
+  shell.run("mv TURTLE/* /")
 else
-  fs.move("COMPUTER/*", "/")
+  fs.delete("blacklist")
+  shell.run("mv COMPUTER/* /")
 end
 fs.delete("TABLET")
 fs.delete("TURTLE")
