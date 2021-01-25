@@ -15,8 +15,8 @@ makeCallDir = function(dir)
   if (dir ~= "") then
     req.url = req.url .. "/" .. dir
   end
-  print("Making call to:")
-  print(req.url)
+  -- print("Making call to:")
+  -- print(req.url)
   local res = http.request(req)
   local result = nil
   while true do
@@ -24,7 +24,10 @@ makeCallDir = function(dir)
     if (result[1] == "http_success") then
       break
     elseif (result[1] == "http_failure") then
-      print(result[3])
+      local h = fs.open("error_log", "a")
+      h.write(result[3])
+      h.writeLine("")
+      h.close()
     end
   end
   local json = result[3].readAll()
@@ -67,3 +70,14 @@ local baseRequest = {
 term.clear()
 term.setCursorPos(1,1)
 navigateTreeJSON(makeCallDir(""), "")
+
+if (pocket) then
+  fs.move("TABLET/*", "/")
+elseif (turtle) then
+  fs.move("TURTLE/*", "/")
+else
+  fs.move("COMPUTER/*", "/")
+end
+fs.delete("TABLET")
+fs.delete("TURTLE")
+fs.delete("COMPUTER")
