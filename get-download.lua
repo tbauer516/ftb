@@ -1,1 +1,0 @@
-wget "https://raw.githubusercontent.com/tbauer516/cc-tweaked/main/download.lua"
