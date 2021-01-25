@@ -1,4 +1,4 @@
-local version = "v5"
+local version = "v6"
 
 local makeCallDir
 local navigateTreeJSON
