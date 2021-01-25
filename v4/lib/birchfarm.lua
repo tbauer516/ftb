@@ -268,7 +268,7 @@ m.mineTree = function(self)
     height = height + 1
   end
   while (height > 0) do
-    self.t:moveD()
+    self.t:mineD()
     height = height - 1
   end
 end
