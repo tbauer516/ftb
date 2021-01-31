@@ -1,4 +1,4 @@
-local version = "v6"
+local version = "v7"
 
 local makeCallDir
 local navigateTreeJSON
@@ -81,9 +81,11 @@ end
 if (pocket) then
   fs.delete("blacklist")
   fs.delete("DISK")
+  fs.delete("ui")
   shell.run("mv TABLET/* /")
 elseif (turtle) then
   fs.delete("DISK")
+  fs.delete("ui")
   shell.run("mv TURTLE/* /")
 else
   fs.delete("blacklist")
