@@ -1,11 +1,9 @@
-local version = "v7"
-
 local makeCallDir
 local navigateTreeJSON
 
 makeCallDir = function(dir)
   local req = {
-    url = "https://api.github.com/repos/tbauer516/ftb/contents/cc-tweaked/" .. version,
+    url = "https://api.github.com/repos/tbauer516/ftb/contents/cc-tweaked/code/",
     method = "GET",
     headers = {
       Accept = "application/vnd.github.v3+json",
