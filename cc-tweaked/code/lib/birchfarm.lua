@@ -50,6 +50,8 @@ m.initBuild = function(self)
   if (turtle.getItemCount(16) == 0 or turtle.getItemCount(1) == 0 or turtle.getItemCount(2) == 0) then
     error("Please add the required items to the turtle inventory. Run 'treefarm' on it's own to see the usage.")
   end
+
+  self.t:initFuel(400)
 end
 
 m.setUpLeft = function(self)
@@ -170,7 +172,7 @@ m.checkFuel = function(self)
   end
   if (turtle.getItemCount() == 1) then
     for i=1,15 do
-      if (turtle.getItemSpace(self.fuelSlot) > 0 and turtle.getItemDetail(i).name == self.fuelItem) then
+      if (turtle.getItemSpace(self.fuelSlot) > 0 and turtle.getItemDetail(i) and turtle.getItemDetail(i).name == self.fuelItem) then
         turtle.select(i)
         turtle.transferTo(self.fuelSlot, turtle.getItemSpace(self.fuelSlot))
       end
@@ -317,7 +319,7 @@ end
 
 m.depositItems = function(self)
   turtle.select(self.fuelSlot)
-  while (turtle.getFuelLevel() < 200) do
+  while (turtle.getItemCount(16) > 1 and turtle.getFuelLevel() < 200) do
     turtle.refuel(1)
   end
 
