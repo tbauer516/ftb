@@ -1,0 +1,21 @@
+# link below for readme
+# https://github.com/itzg/docker-minecraft-server
+
+version: '3'
+
+services:
+  ftb-server:
+    container_name: ftb-server
+    image: itzg/minecraft-server:java8-multiarch
+    restart: unless-stopped
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: "CURSEFORGE"
+      CF_SERVER_MOD: "SIMPLE-SERVER-FILES-1.6.10.zip"
+      MEMORY: "4G"
+      WHITELIST: "tbauer516"
+      OPS: "tbauer516"
+    volumes:
+      - ./server-data:/data
