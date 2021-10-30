@@ -79,7 +79,7 @@ end
 if (pocket) then
   fs.delete("blacklist")
   fs.delete("DISK")
-  fs.delete("ui")
+  --fs.delete("ui")
   shell.run("mv TABLET/* /")
 elseif (turtle) then
   fs.delete("DISK")
