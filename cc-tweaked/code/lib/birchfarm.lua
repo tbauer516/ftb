@@ -319,7 +319,7 @@ end
 
 m.depositItems = function(self)
   turtle.select(self.fuelSlot)
-  while (turtle.getItemCount(16) > 1 and turtle.getFuelLevel() < 200) do
+  while (turtle.getItemCount(16) > 1 and turtle.getFuelLevel() < 205) do
     turtle.refuel(1)
   end
 
