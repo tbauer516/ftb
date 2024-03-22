@@ -189,7 +189,7 @@ m.checkRunStatus = function(self, side)
 end
 
 m.setDelay = function(self, delayTime)
-  self.timerID = os.startTimer(delayTime)
+  self.delayTimerID = os.startTimer(delayTime)
   sleep(2)
   local result = nil
   local baseTime = os.clock()
