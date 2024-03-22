@@ -1,7 +1,7 @@
 local args = {...}
 
--- East Z+
--- South X+
+-- East X+
+-- South Z+
 
 local firstTime = true
 local persistent = {}
