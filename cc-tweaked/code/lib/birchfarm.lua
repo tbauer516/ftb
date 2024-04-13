@@ -199,8 +199,8 @@ m.moveFromHomeToFirstTree = function(self)
     self.t:mineF()
   end
   self.t:moveR()
-  self.t:moveF()
-  self.t:moveF()
+  self.t:mineF()
+  self.t:mineF()
 end
 
 m.checkIsTree = function(self)
@@ -277,7 +277,7 @@ m.scanFarm = function(self)
       end
       self:checkNeedSapling()
       for k=1,3 do
-        self.t:moveF()
+        self.t:mineF()
       end
     end
     
