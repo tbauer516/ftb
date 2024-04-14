@@ -31,12 +31,29 @@ m.chests = {}
 m.inputs = {}
 m.outputs = {}
 
-m.inventory = {}
+m.inventory = {} -- should be input chest
+m.fuelItems = {} -- should be shortcut to fuel location
 
-m.timerID = nil
-m.delay = 20
+m._timerID = nil
+m._pollRate = 3000 --ms
 
 --## Helper Functions ##--
+
+m.isFuel = function(self, name)
+  for fuelName, fuelAmount in pairs(self.fuelList) do
+    if (name == fuelName) then
+      return true
+    end
+  end
+  return false
+end
+
+m.fuelAmount = function(self, name)
+  if (self.fuelList[name] ~= nil) then
+    return self.fuelList[name]
+  end
+  return 0
+end
 
 m.checkForFuelList = function(self)
   local flistPath = self.fuelListDir
@@ -82,14 +99,14 @@ end
 m.getPeripherals = function(self)
   for k,v in ipairs(peripheral.getNames()) do
     if (string.find(v, "furnace")) then
-      self.furnaces[#self.furnaces + 1] = v
+      self.furnaces[#self.furnaces + 1] = peripheral.wrap(v)
     elseif (string.find(v, "chest")) then  
       self.chests[#self.chests + 1] = v
     end
   end
 end
 
-m.hasChestsAssigned = function(self)
+m.hasChestsAssigned = function(self) -- wraps the peripherals
   local chestPath = self.chestDir
   
   if (fs.exists(chestPath .. self.cinputFile)) then
@@ -104,6 +121,13 @@ m.hasChestsAssigned = function(self)
     local outputListText = handle.readAll()
     self.outputs = textutils.unserialize(outputListText)
     handle.close()
+  end
+
+  for i,v in ipairs(self.inputs) do
+    self.inputs[i] = peripheral.wrap(v)
+  end
+  for i,v in ipairs(self.outputs) do
+    self.outputs[i] = peripheral.wrap(v)
   end
 
   return #self.chests == #self.inputs + #self.outputs
@@ -133,24 +157,49 @@ m.assignChests = function(self)
   handle.close()
 end
 
-m.mapInventory = function(self)
+m.prioritizeItems = function(self, items) --re-sort list of items to smelt most important first
+
+  return items
+end
+
+m.queueSmelt = function(self, items) --assign items and fuel to furnaces
 
 end
 
-m.run = function(self)
-  -- self.t:checkRunStatus("left")
+m.mapInventory = function(self) --separate inventory in input
+  local items = {}
+  local fuel = {}
+  for chesti,chest in ipairs(self.inputs) do
+    items[chest] = chest.list()
+    for slot, data in pairs(items[chest]) do
+      if (self:isFuel(data.name)) then
+        fuel[self:fuelAmount(data.name)] = {"name" = data.name, }
+      end
+    end
+  end
+end
 
-  -- while true do
-  --   self:initRun()
-  --   self:setSaplingType()
-  --   self:moveFromHomeToFirstTree()
-  --   self:scanFarm()
-  --   self:scoopItems()
-  --   self:depositItems()
-  --   -- self.t:checkRunStatus("left")
-  --   self.t:setDelay(20 * 60)
-  --   self.t:checkRunStatus("left")
-  -- end
+m.processEvents = function(self, event)
+  if (event[1] == "timer" and event[2] == self._timerID) then
+
+    self._timerID = os.startTimer(self._pollRate / 1000)
+  elseif (event[1] == "key" and event[2] == keys.delete) then
+    os.cancelTimer(self._timerID)
+
+    term.clear()
+    term.setCursorPos(1,1)
+
+    error("Manually cancelled operation")
+  end
+end
+
+m.run = function(self)
+  self._timerID = os.startTimer(0)
+  
+  while true do
+    local event = {os.pullEvent()}
+    self:processEvents(event)
+  end
 end 
 
 --## Constructor Method ##--
@@ -173,7 +222,7 @@ if (args[1] == "run") then
   smelter = m:new()
   smelter:getPeripherals()
   smelter:checkForFuelList()
-  if (not smelter:hasChestsAssigned()) then
+  while (not smelter:hasChestsAssigned()) do
     smelter:assignChests()
   end
   smelter:run()
@@ -187,7 +236,7 @@ elseif (args[1] == "test") then
   smelter = m:new()
   smelter:getPeripherals()
   smelter:checkForFuelList()
-  if (not smelter:hasChestsAssigned()) then
+  while (not smelter:hasChestsAssigned()) do
     smelter:assignChests()
   end
 end

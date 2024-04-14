@@ -272,6 +272,7 @@ m.scanFarm = function(self)
       self:checkFuel()
       if (self:checkIsTree()) then
         self:mineTree()
+        turtle.suckDown()
       else
         self.t:mineF()
       end
