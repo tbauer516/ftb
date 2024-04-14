@@ -40,24 +40,13 @@ m.checkForFuelList = function(self)
   end
 end
 
-m.saveFuelList = function(self, fuelData)
+m.saveFuelList = function(self)
   if (self.fuelListDir ~= "" and not fs.exists(self.fuelListDir)) then
     fs.makeDir(self.fuelListDir)
   end
-  
-  local fuelList = nil
-  if (fs.exists(self.fuelListDir .. self.fuelListFile)) then
-    local handle = fs.open(self.fuelListDir .. self.fuelListFile, "r")
-    local fuelListText = handle.readAll()
-    fuelList = textutils.unserialize(fuelListText)
-    handle.close()
-    for k,v in pairs(fuelData) do
-      fuelList[k] = v
-    end
-  end
-  
+    
   local handle = fs.open(self.fuelListDir .. self.fuelListFile, "w")
-  handle.write(textutils.serialize(fuelList))
+  handle.write(textutils.serialize(self.fuelList))
   handle.close()
 end
 
@@ -75,7 +64,7 @@ m.register = function(self)
 
   for k,v in ipairs(fuelItems) do
     if (self.fuelList[v] == nil) then
-      print("Fuel Item: " .. v)
+      print("How many items can this smelt?\n" .. v)
       self.fuelList[v] = tonumber(read())
     end
   end
