@@ -30,9 +30,9 @@ m._displayToggle = function(self, win)
 end
 
 m._wrapOptions = function(self, val, min, max)
-  if (val < min) then
+  if (min <= max and val < min) then
     val = max
-  elseif (val > max) then
+  elseif (min <= max and val > max) then
     val = min
   end
   return val
@@ -70,7 +70,7 @@ end
 
 m.changeOption = function(self, dir)
   if (self._selectedCol == 1) then
-    self.rows[self._selectedRow]["rank"] = self:_wrapOptions(self.rows[self._selectedRow]["rank"] + dir, 1, #self.chests - 1)
+    self.rows[self._selectedRow]["rank"] = self:_wrapOptions(self.rows[self._selectedRow]["rank"] + dir, 1, #self.rows - 1)
   elseif (self._selectedCol == 2) then
     self.rows[self._selectedRow]["type"] = self:_wrapOptions(self.rows[self._selectedRow]["type"] + dir, 1, #self._options)
   end
