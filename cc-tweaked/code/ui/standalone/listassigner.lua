@@ -72,7 +72,7 @@ m.display = function(self, win)
   local w, h = win.getSize()
   win.setCursorPos(1, 1)
 
-  local max = h + self._scrollpos - 1
+  local max = math.min(h + self._scrollpos - 1, #self.rows)
   local lineIndex = 1
   for i = self._scrollpos, max do
     win.setCursorPos(1, lineIndex)
