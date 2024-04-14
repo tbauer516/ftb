@@ -89,6 +89,7 @@ m.display = function(self, win)
 end
 
 m.run = function(self, win)
+  self:display(win)
   while true do
     local event = {os.pullEvent()}
     if (event[1] == "key") then
@@ -107,18 +108,8 @@ m.run = function(self, win)
       elseif (event[2] == keys.enter) then
 
       end
-
-      for k,v in pairs(self._monitors) do
-        if (k ~= self._computerName) then
-          peripheral.call(k, "clear")
-          peripheral.call(k, "setCursorPos", 1, 1)
-        end
-      end
-      term.clear()
-      term.setCursorPos(1,1)
-
-      error()
     end
+    self:display(win)
   end
 end
 

@@ -1,4 +1,3 @@
-local ui = require("ui/uimanager"):new()
 local listassigner = require("ui/listassigner")
 
 local args = { ... }
@@ -22,6 +21,9 @@ local m = {}
 --## Variables to track state ##--
 m.fuelListDir = "" --can move to sub dir here if need be
 m.fuelListFile = "fuel.flist"
+m.chestDir = ""
+m.cinputFile = "input.clist"
+m.coutputFile = "output.clist"
 
 m.fuelList = {}
 m.furnaces = {}
@@ -85,6 +87,31 @@ m.getPeripherals = function(self)
   end
 end
 
+m.hasChestsAssigned = function(self)
+  local chestPath = self.chestDir
+  
+  if (fs.exists(chestPath .. self.cinputFile)) then
+    local handle = fs.open(chestPath .. self.cinputFile, "r")
+    local inputListText = handle.readAll()
+    self.inputs = textutils.unserialize(inputListText)
+    handle.close()
+  end
+
+  if (fs.exists(chestPath .. self.coutputFile)) then
+    local handle = fs.open(chestPath .. self.coutputFile, "r")
+    local outputListText = handle.readAll()
+    self.outputs = textutils.unserialize(outputListText)
+    handle.close()
+  end
+
+  return #self.chests == #self.inputs + #self.outputs
+end
+
+m.assignChests = function(self)
+  local assigner = listassigner:new(self.chests, {"Input", "Output"})
+  assigner:run(term.native())
+end
+
 m.run = function(self)
   -- self.t:checkRunStatus("left")
 
@@ -132,4 +159,7 @@ elseif (args[1] == "test") then
   smelter = m:new()
   smelter:getPeripherals()
   smelter:checkForFuelList()
+  if (not smelter:hasChestsAssigned()) then
+    smelter:assignChests()
+  end
 end
