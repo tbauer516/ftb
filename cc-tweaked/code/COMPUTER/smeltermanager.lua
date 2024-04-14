@@ -72,7 +72,7 @@ m.saveFuelList = function(self, fuelData)
   end
   
   local handle = fs.open(self.fuelListDir .. "fuel.flist", "w")
-  handle.write(textutils.serialize(fuelList)
+  handle.write(textutils.serialize(fuelList))
   handle.close()
 end
 
