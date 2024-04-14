@@ -76,6 +76,18 @@ m.changeOption = function(self, dir)
   end
 end
 
+m.submit = function(self)
+  local results = {}
+  for k,v in ipairs(self._options) do
+    results[v] = {}
+  end
+  for k,v in ipairs(self.rows) do
+    local subTable = self._options[v.type]
+    results[subTable][v.rank] == v.id
+  end
+  return results
+end
+
 m.display = function(self, win)
   win.clear()
   local w, h = win.getSize()
@@ -115,7 +127,7 @@ m.run = function(self, win)
       elseif (event[2] == keys.d) then
         self:selectCol(1)
       elseif (event[2] == keys.enter) then
-
+        return self:submit()
       end
     end
     self:display(win)

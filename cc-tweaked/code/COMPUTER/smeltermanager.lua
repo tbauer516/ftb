@@ -109,7 +109,26 @@ end
 
 m.assignChests = function(self)
   local assigner = listassigner:new(self.chests, {"Input", "Output"})
-  assigner:run(term.native())
+  local assignments = assigner:run(term.native())
+  for k,v in pairs(assignments) do
+    if (k == "Input") then
+      self.inputs = v
+    elseif(k == "Output") then
+      self.outputs = v
+    end
+  end
+
+  if (self.chestDir ~= "" and not fs.exists(self.chestDir)) then
+    fs.makeDir(self.chestDir)
+  end
+
+  local handle = fs.open(self.chestDir .. self.cinputFile, "w")
+  handle.write(textutils.serialize(self.inputs))
+  handle.close()
+
+  local handle = fs.open(self.chestDir .. self.coutputFile, "w")
+  handle.write(textutils.serialize(self.outputs))
+  handle.close()
 end
 
 m.run = function(self)
