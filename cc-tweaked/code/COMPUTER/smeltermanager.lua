@@ -1,3 +1,6 @@
+local ui = require("ui/uimanager"):new()
+local listassigner = require("ui/listassigner")
+
 local args = { ... }
 if (#args < 1) then -- or #args > 1) then
   print("Computer will manage an input chest, output chest and any number of furnaces.")
@@ -23,6 +26,8 @@ m.fuelListFile = "fuel.flist"
 m.fuelList = {}
 m.furnaces = {}
 m.chests = {}
+m.inputs = {}
+m.outputs = {}
 
 m.timerID = nil
 m.delay = 20
