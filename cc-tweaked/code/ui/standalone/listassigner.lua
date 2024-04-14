@@ -78,9 +78,9 @@ m.display = function(self, win)
     win.setCursorPos(1, lineIndex)
     local col1 = self.rows[i]["rank"]
     local col2 = self._options[self.rows[i]["type"]]
-    if (self.selectedRow == i and self.selectedCol == 1) then
+    if (self._selectedRow == i and self._selectedCol == 1) then
       col1 = "[" .. col1 .. "]"
-    elseif (self.selectedRow == i and self.selectedCol == 2) then
+    elseif (self._selectedRow == i and self._selectedCol == 2) then
       col2 = "[" .. col2 .. "]"
     end
     win.write(col1 .. " | " .. col2 .. " | " .. self.rows[i]["id"])
