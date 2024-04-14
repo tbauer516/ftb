@@ -31,6 +31,8 @@ m.chests = {}
 m.inputs = {}
 m.outputs = {}
 
+m.inventory = {}
+
 m.timerID = nil
 m.delay = 20
 
@@ -131,6 +133,10 @@ m.assignChests = function(self)
   handle.close()
 end
 
+m.mapInventory = function(self)
+
+end
+
 m.run = function(self)
   -- self.t:checkRunStatus("left")
 
@@ -167,6 +173,9 @@ if (args[1] == "run") then
   smelter = m:new()
   smelter:getPeripherals()
   smelter:checkForFuelList()
+  if (not smelter:hasChestsAssigned()) then
+    smelter:assignChests()
+  end
   smelter:run()
 elseif (args[1] == "register") then
   smelter = m:new()

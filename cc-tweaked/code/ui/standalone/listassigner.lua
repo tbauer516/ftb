@@ -83,7 +83,7 @@ m.submit = function(self)
   end
   for k,v in ipairs(self.rows) do
     local subTable = self._options[v.type]
-    results[subTable][v.rank] == v.id
+    results[subTable][v.rank] = v.id
   end
   return results
 end
