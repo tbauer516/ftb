@@ -96,10 +96,31 @@ m.register = function(self)
   end
 end
 
+m._pushToFurnace = function(self, chest, iSlot, furnace, fSlot)
+  chest.pushItems(peripheral.getName(furnace), iSlot, chest.getItemDetails(iSlot).maxCount, fSlot)
+end
+
+m.pushItemToFurnace = function(self, chest, iSlot, furnace)
+  self:_pushToFurnace(chest, iSlot, furnace, 1)
+end
+
+m.pushFuelToFurnace = function(self, chest, iSlot, furnace)
+  self:_pushToFurnace(chest, iSlot, furnace, 2)
+end
+
+--furnace should be empty in slot 1,2 and have no timer
+m.isFurnaceAvailable = function(self, furnace)
+  return furnace.timerID == nil and furnace.list()[1] == nil and furnace.list()[2] == nil
+end
+
 m.getPeripherals = function(self)
   for k,v in ipairs(peripheral.getNames()) do
     if (string.find(v, "furnace")) then
-      self.furnaces[#self.furnaces + 1] = peripheral.wrap(v)
+      local furnace = peripheral.wrap(v)
+      furnace.isAvailable = function(self)
+        return self.timerID == nil and self.list()[1] == nil and self.list()[2] == nil
+      end
+      self.furnaces[#self.furnaces + 1] = furnace
     elseif (string.find(v, "chest")) then  
       self.chests[#self.chests + 1] = v
     end
@@ -157,32 +178,64 @@ m.assignChests = function(self)
   handle.close()
 end
 
+m.mapInventory = function(self) --separate inventory in input
+  local items = {}
+  local fuel = {}
+  for chesti,chest in ipairs(self.inputs) do
+    for slot, data in pairs(chest.list()) do
+      local item = {"name" = data.name, "count" = data.count, "pos" = slot, "chest" = chest}
+      if (self:isFuel(data.name)) then
+        local amount = self:fuelAmount(data.name)
+        if (fuel[amount] == nil) then
+          fuel[amount] = {}
+        end
+        fuel[amount][#fuel[amount] + 1] = item
+      else
+        items[#items + 1] = item
+      end
+    end
+  end
+  return {"items" = items, "fuels" = fuel}
+end
+
 m.prioritizeItems = function(self, items) --re-sort list of items to smelt most important first
 
   return items
 end
 
-m.queueSmelt = function(self, items) --assign items and fuel to furnaces
+m.queueSmelt = function(self, items, fuels) --assign items and fuel to furnaces
+  local fuelSizes = {}
+  for i, fuel in ipairs(fuels) do
 
-end
+  end
 
-m.mapInventory = function(self) --separate inventory in input
-  local items = {}
-  local fuel = {}
-  for chesti,chest in ipairs(self.inputs) do
-    items[chest] = chest.list()
-    for slot, data in pairs(items[chest]) do
-      if (self:isFuel(data.name)) then
-        fuel[self:fuelAmount(data.name)] = {"name" = data.name, }
-      end
+  for i, furnace in ipairs(self.furnaces) do
+    if (furnace:isAvailable()) then
+
     end
   end
+end
+
+m.processInventory = function(self)
+  local mappedInventory = self:mapInventory()
+  local items = mappedInventory.items
+  local fuels = mappedInventory.fuels
+
+  items = self:prioritizeItems(items)
+
+  self:queueSmelt(items, fuels)
 end
 
 m.processEvents = function(self, event)
   if (event[1] == "timer" and event[2] == self._timerID) then
 
     self._timerID = os.startTimer(self._pollRate / 1000)
+  elseif (event[1] == "timer") then
+    for i,furnace in ipairs(self.furnaces) do
+      if (furnace.timerID == event[2]) then
+        furnace.timerID = nil
+      end
+    end
   elseif (event[1] == "key" and event[2] == keys.delete) then
     os.cancelTimer(self._timerID)
 
