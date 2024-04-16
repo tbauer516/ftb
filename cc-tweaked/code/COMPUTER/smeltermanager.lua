@@ -266,6 +266,7 @@ m.processInventory = function(self)
   local mappedInventory = self:mapInventory()
   local items = mappedInventory.items
   local fuels = mappedInventory.fuels
+  if (#items == 0 or #fuels == 0) then return end
   local fuelTiers = mappedInventory.fuelTiers
 
   items = self:prioritizeItems(items)
