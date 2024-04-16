@@ -239,6 +239,7 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
         if (fuelNeeded > 0) then                -- only entertain this if we have enough items to justify using large fuel
           local maxItemsPerFuelTier = fuelNeeded * fuelTier
           local fuelToUse = math.min(fuels[fuelTier][#fuels[fuelTier]].count, fuelNeeded)
+          maxItemsPerFuelTier = math.floor(fuelToUse * fuelTier)
           local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, maxItemsPerFuelTier)
           if (itemsAdded == 0) then
             itemIndex = itemIndex + 1
