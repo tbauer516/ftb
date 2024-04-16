@@ -81,17 +81,17 @@ m.register = function(self)
   term.setCursorPos(1,1)
 
   local fuelItems = {}
-  for k,v in ipairs(self.furnaces) do
-    local fuelItem = peripheral.call(v, "list")[2]
+  for i, furnace in ipairs(self.furnaces) do
+    local fuelItem = furnace.list()[2]
     if (fuelItem ~= nil) then
       fuelItems[#fuelItems + 1] = fuelItem.name
     end
   end
 
-  for k,v in ipairs(fuelItems) do
-    if (self.fuelList[v] == nil) then
-      print("How many items can this smelt?\n" .. v)
-      self.fuelList[v] = tonumber(read())
+  for i, fuelName in ipairs(fuelItems) do
+    if (self.fuelList[fuelName] == nil) then
+      print("How many items can this smelt?\n" .. fuelName)
+      self.fuelList[fuelName] = tonumber(read())
     end
   end
 end
@@ -104,21 +104,23 @@ m.getPeripherals = function(self)
         return self.list()[1] == nil and self.list()[2] == nil
       end
       furnace.addFuel = function(self, inputChest, slot, limit)
-        self.pullItems(peripheral.getName(inputChest), slot, limit, 2)
+        return self.pullItems(peripheral.getName(inputChest), slot, limit, 2)
       end
       furnace.addItem = function(self, inputChest, slot, limit)
-        self.pullItems(peripheral.getName(inputChest), slot, limit, 1)
+        return self.pullItems(peripheral.getName(inputChest), slot, limit, 1)
       end
       furnace.emptySmeltToOutput = function(self, outputChest)
-        self.pushItems(peripheral.getName(outputChest, 3))
+        return self.pushItems(peripheral.getName(outputChest, 3))
       end
       furnace.emptySmelt = function(self, outputChests)
+        local itemGrabbedCount = 0
         for i, chest in ipairs(outputChests) do
           if (furnace.list()[3] == nil) then
             break
           end
-          furnace:emptySmeltToOutput(chest)
+          itemGrabbedCount = itemGrabbedCount + furnace:emptySmeltToOutput(chest)
         end
+        return itemGrabbedCount
       end
       self.furnaces[#self.furnaces + 1] = furnace
       self.furnaceStack[#self.furnaceStack + 1] = furnace
