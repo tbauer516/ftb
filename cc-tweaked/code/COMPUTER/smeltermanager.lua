@@ -219,7 +219,7 @@ m._sortByStackCountDesc = function(a, b)
 end
 
 m.prioritizeItems = function(self, items) --re-sort list of items to smelt most important first
-  return table.sort(items, self._sortByStackCountDesc)
+  table.sort(items, self._sortByStackCountDesc)
 end
 
 m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel to furnaces
@@ -229,6 +229,7 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
     local furnace = self.furnaceStack[#self.furnaceStack]
     self.furnaceStack[#self.furnaceStack] = nil
     if (furnace:isAvailable()) then
+      print("Furnace " .. peripheral.getName(furnace) .. " found.")
       for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
         local fuelTier = fuelTiers[i]
         local fuelNeeded = math.floor(items[itemIndex].count / fuelTier) -- max number of fuels to smelt at this fuel level
@@ -266,20 +267,25 @@ m.processInventory = function(self)
   local mappedInventory = self:mapInventory()
   local items = mappedInventory.items
   local fuels = mappedInventory.fuels
-  if (#items == 0 or #fuels == 0) then return end
+  if (#items == 0 or #fuels == 0) then
+    print("Missing items or fuel")
+    return
+  end
   local fuelTiers = mappedInventory.fuelTiers
 
-  items = self:prioritizeItems(items)
+  self:prioritizeItems(items)
 
   self:queueSmelt(items, fuels, fuelTiers)
 end
 
 m.processEvents = function(self, event)
   if (event[1] == "timer" and event[2] == self._timerID) then
-    self:processInventory()
+    print("Timer " .. event[2] .. " processed")
     self._timerID = os.startTimer(self._pollRate)
+    self:processInventory()
   elseif (event[1] == "timer") then
     local furnace = self._furnaceTimers[event[2]]
+    print("Furnace " .. peripheral.getName(furnace) .. " finished")
     self._furnaceTimers[event[2]] = nil
     furnace:emptySmelt(self.outputs)
     self.furnaceStack[#self.furnaceStack + 1] = furnace
