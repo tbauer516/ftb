@@ -115,15 +115,15 @@ m.getPeripherals = function(self)
       furnace.emptySmelt = function(self, outputChests)
         local itemGrabbedCount = 0
         for i, chest in ipairs(outputChests) do
-          if (furnace.list()[3] == nil) then
+          if (self.list()[3] == nil) then
             break
           end
-          itemGrabbedCount = itemGrabbedCount + furnace:emptySmeltToOutput(chest)
+          itemGrabbedCount = itemGrabbedCount + self:emptySmeltToOutput(chest)
         end
         return itemGrabbedCount
       end
-      self.furnaces[#self.furnaces + 1] = furnace
-      self.furnaceStack[#self.furnaceStack + 1] = furnace
+      self.furnaces[#self.furnaces + 1] = self
+      self.furnaceStack[#self.furnaceStack + 1] = self
     elseif (string.find(v, "chest")) then  
       self.chests[#self.chests + 1] = v
     end
@@ -189,9 +189,12 @@ m.mapInventory = function(self) --separate inventory in input
     for slot, data in pairs(chest.list()) do
       local item = {name = data.name, count = data.count, pos = slot, chest = chest}
       if (self:isFuel(data.name)) then
+        print("Found fuel " .. data.name .. " during mapping")
         local amount = self:fuelAmount(data.name)
+        print("Fuel tier " .. amount)
         if (fuels[amount] == nil) then
           fuels[amount] = {}
+          print("Added tier " .. amount .. " to fuels")
         end
         fuels[amount][#fuels[amount] + 1] = item
 
@@ -246,7 +249,7 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
           local newTimer = os.startTimer((10 * itemsAdded) + 1)
           self._furnaceTimers[newTimer] = furnace
           items[itemIndex].count = items[itemIndex].count - maxItemsPerFuelTier
-          fuels[fuelTier][k].count = fuels[fuelTier][k].count - fuelToUse -- reduce count by used
+          fuels[fuelTier][#fuels[fuelTier]].count = fuels[fuelTier][#fuels[fuelTier]].count - fuelToUse -- reduce count by used
           
           if (items[itemIndex].count == 0) then
             itemIndex = itemIndex + 1
@@ -267,8 +270,8 @@ m.processInventory = function(self)
   local mappedInventory = self:mapInventory()
   local items = mappedInventory.items
   local fuels = mappedInventory.fuels
-  if (#items == 0 or #fuels == 0) then
-    print("Missing items or fuel")
+  if (#items == 0) then
+    print("Missing items")
     return
   end
   local fuelTiers = mappedInventory.fuelTiers
