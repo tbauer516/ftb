@@ -110,7 +110,7 @@ m.getPeripherals = function(self)
         return self.pullItems(peripheral.getName(inputChest), slot, limit, 1)
       end
       furnace.emptySmeltToOutput = function(self, outputChest)
-        return self.pushItems(peripheral.getName(outputChest, 3))
+        return self.pushItems(peripheral.getName(outputChest), 3)
       end
       furnace.emptySmelt = function(self, outputChests)
         local itemGrabbedCount = 0
