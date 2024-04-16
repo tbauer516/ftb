@@ -122,8 +122,8 @@ m.getPeripherals = function(self)
         end
         return itemGrabbedCount
       end
-      self.furnaces[#self.furnaces + 1] = self
-      self.furnaceStack[#self.furnaceStack + 1] = self
+      self.furnaces[#self.furnaces + 1] = furnace
+      self.furnaceStack[#self.furnaceStack + 1] = furnace
     elseif (string.find(v, "chest")) then  
       self.chests[#self.chests + 1] = v
     end
