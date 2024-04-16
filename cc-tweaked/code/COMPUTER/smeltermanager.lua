@@ -185,7 +185,7 @@ m.mapInventory = function(self) --separate inventory in input
   local fuelTiers = {} -- array in reverse sort of the different fuel levels, to be used in conjunction with {fuels}
   for chesti,chest in ipairs(self.inputs) do
     for slot, data in pairs(chest.list()) do
-      local item = {"name" = data.name, "count" = data.count, "pos" = slot, "chest" = chest}
+      local item = {name = data.name, count = data.count, pos = slot, chest = chest}
       if (self:isFuel(data.name)) then
         local amount = self:fuelAmount(data.name)
         if (fuels[amount] == nil) then
@@ -209,7 +209,7 @@ m.mapInventory = function(self) --separate inventory in input
       end
     end
   end
-  return {"items" = items, "fuels" = fuels, "fuelTiers" = fuelTiers}
+  return {items = items, fuels = fuels, fuelTiers = fuelTiers}
 end
 
 m._sortByStackCountDesc = function(a, b)
@@ -232,25 +232,25 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
         local fuelNeeded = math.floor(items[itemIndex].count / fuelTier) -- max number of fuels to smelt at this fuel level
         if (fuelNeeded > 0) then                -- only entertain this if we have enough items to justify using large fuel
           local maxItemsPerFuelTier = fuelNeeded * fuelTier
-          local fuelToUse = math.min(fuel[fuelTier][#fuel[fuelTier]].count, fuelNeeded)
+          local fuelToUse = math.min(fuels[fuelTier][#fuels[fuelTier]].count, fuelNeeded)
           local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, maxItemsPerFuelTier)
           if (itemsAdded == 0) then
             itemIndex = itemIndex + 1
             self.furnaceStack[#self.furnaceStack + 1] = furnace
             break
           end
-          furnace:addFuel(fuels[fuelTier][#fuel[fuelTier]].chest, fuels[fuelTier][#fuel[fuelTier]].pos, fuelToUse)
+          furnace:addFuel(fuels[fuelTier][#fuels[fuelTier]].chest, fuels[fuelTier][#fuels[fuelTier]].pos, fuelToUse)
           local newTimer = os.startTimer((10 * itemsAdded) + 1)
           self._furnaceTimers[newTimer] = furnace
           items[itemIndex].count = items[itemIndex].count - maxItemsPerFuelTier
-          fuel[fuelTier][k].count = fuel[fuelTier][k].count - fuelToUse -- reduce count by used
+          fuels[fuelTier][k].count = fuels[fuelTier][k].count - fuelToUse -- reduce count by used
           
           if (items[itemIndex].count == 0) then
             itemIndex = itemIndex + 1
           end
-          if (fuel[fuelTier][#fuel[fuelTier]].count == 0) then -- exhaust stack of fuel
-            table.remove(fuel[fuelTier], #fuel[fuelTier]) -- remove fuel from list and allow to move to next in list
-            if (#fuel[fuelTier] == 0) then -- ran out of fuel tier
+          if (fuels[fuelTier][#fuels[fuelTier]].count == 0) then -- exhaust stack of fuel
+            table.remove(fuels[fuelTier], #fuels[fuelTier]) -- remove fuel from list and allow to move to next in list
+            if (#fuels[fuelTier] == 0) then -- ran out of fuel tier
               table.remove(fuelTiers, i)
             end
           end
@@ -273,7 +273,7 @@ end
 
 m.processEvents = function(self, event)
   if (event[1] == "timer" and event[2] == self._timerID) then
-
+    self:processInventory()
     self._timerID = os.startTimer(self._pollRate)
   elseif (event[1] == "timer") then
     local furnace = self._furnaceTimers[event[2]]
@@ -292,6 +292,8 @@ m.processEvents = function(self, event)
 end
 
 m.run = function(self)
+  term.clear()
+  term.setCursorPos(1,1)
   self._timerID = os.startTimer(0)
   
   while true do

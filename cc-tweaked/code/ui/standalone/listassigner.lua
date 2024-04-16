@@ -98,20 +98,20 @@ m.display = function(self, win)
   local col1W = 1
   local col2W = 1
   for i = self._scrollpos, max do
-    col1W = math.max(col1W, #self.rows[i]["rank"])
-    col2W = math.max(col2W, #self.rows[i]["type"])
+    col1W = math.max(col1W, #tostring(self.rows[i]["rank"]))
+    col2W = math.max(col2W, #self._options[self.rows[i]["type"]])
   end
   for i = self._scrollpos, max do
     win.setCursorPos(1, lineIndex)
-    local col1 = self.rows[i]["rank"]
+    local col1 = tostring(self.rows[i]["rank"])
     for i = 1,col1W - #col1 do
       col1 = " " .. col1
     end
     local col2 = self._options[self.rows[i]["type"]]
-    for i = 1, math.floor((col2W - #col2) / 2) end
+    for i = 1, math.floor((col2W - #col2) / 2) do
       col2 = " " .. col2
     end
-    for i = 1, col2W - #col2 end
+    for i = 1, col2W - #col2 do
       col2 = col2 .. " "
     end
 
@@ -119,7 +119,7 @@ m.display = function(self, win)
       col1 = "[" .. col1 .. "]"
       col2 = " " .. col2 .. " "
     elseif (self._selectedRow == i and self._selectedCol == 2) then
-      col2 = " " .. col1 .. " "
+      col1 = " " .. col1 .. " "
       col2 = "[" .. col2 .. "]"
     else
       col1 = " " .. col1 .. " "
