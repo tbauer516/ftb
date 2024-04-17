@@ -279,11 +279,12 @@ m.getNextSmeltBundle = function(self, items, fuels, fuelTiers)
     for j = #fuels[fuelTier], 1, -1 do
       local fuel = fuels[fuelTier][j]
       if (fuel.count >= quantityNeeded and item.count >= fuelTier * quantityNeeded) then
-        local fuelToUse = nil
-        local itemsToSmelt = nil
-        for fuelToUse = quantityNeeded, fuel.count, quantityNeeded do
-          if (item.count >= fuelTier * fuelToUse) then
-            itemsToSmelt = fuelTier * fuelToUse
+        local fuelToUse = quantityNeeded
+        local itemsToSmelt = fuelTier * fuelToUse
+        for i = quantityNeeded, fuel.count, quantityNeeded do
+          if (item.count >= fuelTier * i) then
+            fuelToUse = i
+            itemsToSmelt = fuelTier * i
           else
             break
           end
@@ -310,7 +311,7 @@ m.smeltFromQueue = function(self, item, itemAmount, fuel, fuelAmount, furnace)
   furnace:addFuel(fuel.chest, fuel.pos, fuelAmount)
   if (itemsAdded == nil or itemsAdded == 0) then return false end
   sleep(0.1)
-  return furnace.list()[2].count < fuelAmount
+  return furnace.list()[2] == nil or furnace.list()[2].count < fuelAmount
 end
 
 m.queueSmelt = function(self, items, fuels, fuelTiers, furnace) --assign items and fuel to furnaces
@@ -350,7 +351,6 @@ m.queueSmelt = function(self, items, fuels, fuelTiers, furnace) --assign items a
         end
       end
     end
-    end
   end
 end
 
@@ -373,6 +373,8 @@ m.processInventory = function(self)
     local success = self:smeltFromQueue(item, itemAmount, fuel, fuelAmount, furnace)
     if (success) then
       self.furnaceStack[#self.furnaceStack] = nil
+      local newTimer = os.startTimer((10 * itemAmount) + 1)
+      self._furnaceTimers[newTimer] = furnace
     else
       self.blacklist[item.name] = true
       self:saveBlacklist()
