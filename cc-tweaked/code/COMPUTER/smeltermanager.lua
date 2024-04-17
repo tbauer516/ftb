@@ -207,7 +207,7 @@ m.mapInventory = function(self) --separate inventory in input
           end
         end
         if (not addedTier) then -- assuming tier is > everything in the list
-          fuelTiers[#fuelTiers + 1] = amount
+          fuelTiers[#fuelTiers + 1] = tier
         end
       else
         items[#items + 1] = item
@@ -247,19 +247,18 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
         local fuelTier = fuelTiers[i]
         local maxFuelNeeded = math.floor(items[itemIndex].count / fuelTier)
         if (maxFuelNeeded > 0) then
-          local maxItemsPerFuelTier = maxFuelNeeded * fuelTier
-          local actualFuelUsed = math.min(fuels[fuelTier][#fuels[fuelTier]].count, maxFuelNeeded) -- assumes more items than fuels
-          local actualItemsToSmelt = math.floor(actualFuelUsed * fuelTier) -- needs to check if still possible
-          local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, actualItemsToSmelt)
+          local actualFuelAvailable = math.min(fuels[fuelTier][#fuels[fuelTier]].count, maxFuelNeeded) -- assumes more items than fuels
+          local itemsPerFuelAvailable = math.floor(actualFuelAvailable * fuelTier)
+          local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, itemsPerFuelAvailable)
           if (itemsAdded == 0) then
             itemIndex = itemIndex + 1
           else
             self.furnaceStack[#self.furnaceStack] = nil
-            furnace:addFuel(fuels[fuelTier][#fuels[fuelTier]].chest, fuels[fuelTier][#fuels[fuelTier]].pos, actualFuelUsed)
+            furnace:addFuel(fuels[fuelTier][#fuels[fuelTier]].chest, fuels[fuelTier][#fuels[fuelTier]].pos, actualFuelAvailable)
             local newTimer = os.startTimer((10 * itemsAdded) + 1)
             self._furnaceTimers[newTimer] = furnace
-            items[itemIndex].count = items[itemIndex].count - actualItemsToSmelt
-            fuels[fuelTier][#fuels[fuelTier]].count = fuels[fuelTier][#fuels[fuelTier]].count - actualFuelUsed -- reduce count by used
+            items[itemIndex].count = items[itemIndex].count - itemsPerFuelAvailable
+            fuels[fuelTier][#fuels[fuelTier]].count = fuels[fuelTier][#fuels[fuelTier]].count - actualFuelAvailable -- reduce count by used
             
             if (items[itemIndex].count == 0) then
               itemIndex = itemIndex + 1
