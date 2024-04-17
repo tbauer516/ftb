@@ -35,7 +35,7 @@ m.furnaceStack = {}
 
 m._timerID = nil
 m._furnaceTimers = {}
-m._pollRate = 30 -- seconds
+m._pollRate = 10 -- seconds
 
 --## Helper Functions ##--
 
@@ -241,7 +241,6 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
   
   while #self.furnaceStack > 0 do
     local furnace = self.furnaceStack[#self.furnaceStack]
-    self.furnaceStack[#self.furnaceStack] = nil
     if (furnace:isAvailable() and items[itemIndex] ~= nil) then
       print("Furnace " .. peripheral.getName(furnace) .. " found.")
       for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
@@ -254,8 +253,8 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
           local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, actualItemsToSmelt)
           if (itemsAdded == 0) then
             itemIndex = itemIndex + 1
-            self.furnaceStack[#self.furnaceStack + 1] = furnace
           else
+            self.furnaceStack[#self.furnaceStack] = nil
             furnace:addFuel(fuels[fuelTier][#fuels[fuelTier]].chest, fuels[fuelTier][#fuels[fuelTier]].pos, actualFuelUsed)
             local newTimer = os.startTimer((10 * itemsAdded) + 1)
             self._furnaceTimers[newTimer] = furnace
