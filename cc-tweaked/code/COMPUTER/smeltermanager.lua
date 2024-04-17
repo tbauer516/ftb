@@ -184,12 +184,9 @@ m.mapInventory = function(self) --separate inventory in input
     for slot, data in pairs(chest.list()) do
       local item = {name = data.name, count = data.count, pos = slot, chest = chest}
       if (self:isFuel(data.name)) then
-        print("Found fuel " .. data.name .. " during mapping")
         local tier = self:fuelTier(data.name)
-        print("Fuel tier " .. tier)
         if (fuels[tier] == nil) then
           fuels[tier] = {}
-          print("Added tier " .. tier .. " to fuels")
         end
         fuels[tier][#fuels[tier] + 1] = item
 
@@ -211,7 +208,6 @@ m.mapInventory = function(self) --separate inventory in input
         end
       else
         items[#items + 1] = item
-        print("Found item " .. data.name .. " during mapping")
       end
     end
   end
@@ -244,7 +240,6 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
     if (items[itemIndex] == nil) then
       break
     elseif (furnace:isAvailable()) then
-      print("Furnace " .. peripheral.getName(furnace) .. " found.")
       for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
         local fuelTier = fuelTiers[i]
         local maxFuelNeeded = math.floor(items[itemIndex].count / fuelTier)
