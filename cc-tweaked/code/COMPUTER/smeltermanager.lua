@@ -241,7 +241,9 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
   
   while #self.furnaceStack > 0 do
     local furnace = self.furnaceStack[#self.furnaceStack]
-    if (furnace:isAvailable() and items[itemIndex] ~= nil) then
+    if (items[itemIndex] == nil) then
+      break
+    elseif (furnace:isAvailable()) then
       print("Furnace " .. peripheral.getName(furnace) .. " found.")
       for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
         local fuelTier = fuelTiers[i]
@@ -249,6 +251,7 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
         if (maxFuelNeeded > 0) then
           local actualFuelAvailable = math.min(fuels[fuelTier][#fuels[fuelTier]].count, maxFuelNeeded) -- assumes more items than fuels
           local itemsPerFuelAvailable = math.floor(actualFuelAvailable * fuelTier)
+          actualFuelAvailable = math.floor(itemsPerFuelAvailable / fuelTier)
           local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, itemsPerFuelAvailable)
           if (itemsAdded == 0) then
             itemIndex = itemIndex + 1
