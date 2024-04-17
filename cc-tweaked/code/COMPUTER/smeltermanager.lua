@@ -235,7 +235,7 @@ end
 m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel to furnaces
   local itemIndex = 1
   
-  while #self.furnaceStack > 0 do
+  for furnaceIndex = #self.furnaceStack, 1, -1 do
     local furnace = self.furnaceStack[#self.furnaceStack]
     if (items[itemIndex] == nil) then
       break
