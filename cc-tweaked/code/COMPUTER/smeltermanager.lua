@@ -19,6 +19,7 @@ local smelter = nil -- placeholder for instance
 local m = {}
 
 --## Variables to track state ##--
+m.blacklistFile = "blacklist.blist"
 m.fuelListDir = "" --can move to sub dir here if need be
 m.fuelListFile = "fuel.flist"
 m.chestDir = ""
@@ -26,6 +27,7 @@ m.cinputFile = "input.clist"
 m.coutputFile = "output.clist"
 
 m.fuelList = {} -- whitelist of fuels
+m.blacklist = {} -- unsmeltables
 m.furnaces = {} -- all furnaces in an array
 m.chests = {}   -- all chests in an array
 m.inputs = {}   -- subset of chests designated as input
@@ -50,11 +52,31 @@ m.fuelTier = function(self, name)
   return 0
 end
 
+m.checkForBlacklist = function(self)
+  if (fs.exists(self.fuelListDir .. self.blacklistFile)) then
+    local handle = fs.open(self.fuelListDir .. self.blacklistFile, "r")
+    local blacklistText = handle.readAll()
+    self.blacklist = textutils.unserialize(blacklistText)
+    handle.close()
+  else
+    self.blacklist = {}
+    self:saveBlacklist()
+  end
+end
+
+m.saveBlacklist = function(self)
+  if (self.fuelListDir ~= "" and not fs.exists(self.fuelListDir)) then
+    fs.makeDir(self.fuelListDir)
+  end
+    
+  local handle = fs.open(self.fuelListDir .. self.blacklistFile, "w")
+  handle.write(textutils.serialize(self.blacklist))
+  handle.close()
+end
+
 m.checkForFuelList = function(self)
-  local flistPath = self.fuelListDir
-  
-  if (fs.exists(flistPath .. self.fuelListFile)) then
-    local handle = fs.open(flistPath .. self.fuelListFile, "r")
+  if (fs.exists(self.fuelListDir .. self.fuelListFile)) then
+    local handle = fs.open(self.fuelListDir .. self.fuelListFile, "r")
     local fuelListText = handle.readAll()
     self.fuelList = textutils.unserialize(fuelListText)
     handle.close()
@@ -176,6 +198,14 @@ m.assignChests = function(self)
   handle.close()
 end
 
+m.pushItemsToOutput = function(self, originPeriph, slot)
+  local itemsToPush = originPeriph.getItemDetail(slot).count
+  for i, oChest in ipairs(self.outputs) do
+    itemsToPush = itemsToPush - originPeriph.pushItems(peripheral.getName(oChest), slot)
+    if (itemsToPush == 0) then break end
+  end
+end
+
 m.mapInventory = function(self) --separate inventory in input
   local items = {} -- items with fuel removed as an unsorted array, with name, count, slot and chest captured
   local fuels = {} -- fuels indexed by their fuel amount (sparce table), with the value being an array of all the fuels that match with their slot
@@ -183,8 +213,10 @@ m.mapInventory = function(self) --separate inventory in input
   for chesti, chest in ipairs(self.inputs) do
     for slot, data in pairs(chest.list()) do
       local item = {name = data.name, count = data.count, pos = slot, chest = chest}
-      if (self:isFuel(data.name)) then
-        local tier = self:fuelTier(data.name)
+      if (self.blacklist[item.name]) then
+        self:pushItemsToOutput(item.chest, item.pos)
+      elseif (self:isFuel(item.name)) then
+        local tier = self:fuelTier(item.name)
         if (fuels[tier] == nil) then
           fuels[tier] = {}
         end
@@ -232,44 +264,92 @@ m.prioritizeFuels = function(self, fuels) --re-sort list of fuels for each tier
   end
 end
 
-m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel to furnaces
+m.canSmelt = function(self, items, fuels, fuelTiers)
+  return #items > 0 and math.floor(items[1].count / fuelTiers[1]) > 0 and fuels[fuelTiers[1]][#fuels[fuelTiers[1]]].count * fuelTiers[1] > 1
+end
+
+m.getNextSmeltBundle = function(self, items, fuels, fuelTiers)
+  local item = items[1]
+  for i = #fuelTiers, 1, -1 do
+    local fuelTier = fuelTiers[i]
+    local quantityNeeded = 1
+    while (fuelTier * quantityNeeded) % 1 ~= 0 do
+      quantityNeeded = quantityNeeded + 1
+    end
+    for j = #fuels[fuelTier], 1, -1 do
+      local fuel = fuels[fuelTier][j]
+      if (fuel.count >= quantityNeeded and item.count >= fuelTier * quantityNeeded) then
+        local fuelToUse = nil
+        local itemsToSmelt = nil
+        for fuelToUse = quantityNeeded, fuel.count, quantityNeeded do
+          if (item.count >= fuelTier * fuelToUse) then
+            itemsToSmelt = fuelTier * fuelToUse
+          else
+            break
+          end
+        end
+        item.count = item.count - itemsToSmelt
+        fuel.count = fuel.count - fuelToUse
+
+        if (item.count == 0) then
+          table.remove(items, 1)
+          self:prioritizeItems(items)
+        end
+        if (fuel.count == 0) then
+          table.remove(fuels[fuelTier], j)
+          self:prioritizeFuels(fuels)
+        end
+        return {item = item, fuel = fuel, itemAmount = itemsToSmelt, fuelAmount = fuelToUse}
+      end
+    end
+  end
+end
+
+m.smeltFromQueue = function(self, item, itemAmount, fuel, fuelAmount, furnace)
+  local itemsAdded = furnace:addItem(item.chest, item.pos, itemAmount)
+  furnace:addFuel(fuel.chest, fuel.pos, fuelAmount)
+  if (itemsAdded == nil or itemsAdded == 0) then return false end
+  sleep(0.1)
+  return furnace.list()[2].count < fuelAmount
+end
+
+m.queueSmelt = function(self, items, fuels, fuelTiers, furnace) --assign items and fuel to furnaces
   local itemIndex = 1
   
-  for furnaceIndex = #self.furnaceStack, 1, -1 do
-    local furnace = self.furnaceStack[#self.furnaceStack]
-    if (items[itemIndex] == nil) then
+  for itemIndex = 1, #items do
+    if (not furnace:isAvailable()) then
       break
-    elseif (furnace:isAvailable()) then
-      for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
-        local fuelTier = fuelTiers[i]
-        local maxFuelNeeded = math.floor(items[itemIndex].count / fuelTier)
-        if (maxFuelNeeded > 0) then
-          local actualFuelAvailable = math.min(fuels[fuelTier][#fuels[fuelTier]].count, maxFuelNeeded) -- assumes more items than fuels
-          local itemsPerFuelAvailable = math.floor(actualFuelAvailable * fuelTier)
-          actualFuelAvailable = math.floor(itemsPerFuelAvailable / fuelTier)
-          local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, itemsPerFuelAvailable)
-          if (itemsAdded == 0) then
+    end
+    for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
+      local fuelTier = fuelTiers[i]
+      local maxFuelNeeded = math.floor(items[itemIndex].count / fuelTier)
+      if (maxFuelNeeded > 0) then
+        local actualFuelAvailable = math.min(fuels[fuelTier][#fuels[fuelTier]].count, maxFuelNeeded) -- assumes more items than fuels
+        local itemsPerFuelAvailable = math.floor(actualFuelAvailable * fuelTier)
+        actualFuelAvailable = math.floor(itemsPerFuelAvailable / fuelTier)
+        local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, itemsPerFuelAvailable)
+        if (itemsAdded == 0) then
+          itemIndex = itemIndex + 1
+        else
+          self.furnaceStack[#self.furnaceStack] = nil
+          furnace:addFuel(fuels[fuelTier][#fuels[fuelTier]].chest, fuels[fuelTier][#fuels[fuelTier]].pos, actualFuelAvailable)
+          local newTimer = os.startTimer((10 * itemsAdded) + 1)
+          self._furnaceTimers[newTimer] = furnace
+          items[itemIndex].count = items[itemIndex].count - itemsPerFuelAvailable
+          fuels[fuelTier][#fuels[fuelTier]].count = fuels[fuelTier][#fuels[fuelTier]].count - actualFuelAvailable -- reduce count by used
+          
+          if (items[itemIndex].count == 0) then
             itemIndex = itemIndex + 1
-          else
-            self.furnaceStack[#self.furnaceStack] = nil
-            furnace:addFuel(fuels[fuelTier][#fuels[fuelTier]].chest, fuels[fuelTier][#fuels[fuelTier]].pos, actualFuelAvailable)
-            local newTimer = os.startTimer((10 * itemsAdded) + 1)
-            self._furnaceTimers[newTimer] = furnace
-            items[itemIndex].count = items[itemIndex].count - itemsPerFuelAvailable
-            fuels[fuelTier][#fuels[fuelTier]].count = fuels[fuelTier][#fuels[fuelTier]].count - actualFuelAvailable -- reduce count by used
-            
-            if (items[itemIndex].count == 0) then
-              itemIndex = itemIndex + 1
-            end
-            if (fuels[fuelTier][#fuels[fuelTier]].count == 0) then -- exhaust stack of fuel
-              table.remove(fuels[fuelTier], #fuels[fuelTier]) -- remove fuel from list and allow to move to next in list
-              if (#fuels[fuelTier] == 0) then -- ran out of fuel tier
-                table.remove(fuelTiers, i)
-              end
+          end
+          if (fuels[fuelTier][#fuels[fuelTier]].count == 0) then -- exhaust stack of fuel
+            table.remove(fuels[fuelTier], #fuels[fuelTier]) -- remove fuel from list and allow to move to next in list
+            if (#fuels[fuelTier] == 0) then -- ran out of fuel tier
+              table.remove(fuelTiers, i)
             end
           end
         end
       end
+    end
     end
   end
 end
@@ -283,7 +363,26 @@ m.processInventory = function(self)
   self:prioritizeItems(items)
   self:prioritizeFuels(fuels)
 
-  self:queueSmelt(items, fuels, fuelTiers)
+  while (#self.furnaceStack > 0 and self:canSmelt(items, fuels, fuelTiers)) do
+    local furnace = self.furnaceStack[#self.furnaceStack]
+    local smeltBundle = self:getNextSmeltBundle(items, fuels, fuelTiers)
+    local item = smeltBundle.item
+    local fuel = smeltBundle.fuel
+    local itemAmount = smeltBundle.itemAmount
+    local fuelAmount = smeltBundle.fuelAmount
+    local success = self:smeltFromQueue(item, itemAmount, fuel, fuelAmount, furnace)
+    if (success) then
+      self.furnaceStack[#self.furnaceStack] = nil
+    else
+      self.blacklist[item.name] = true
+      self:saveBlacklist()
+      self:pushItemsToOutput(furnace, 1)
+      self:pushItemsToOutput(furnace, 2)
+      break
+    end
+  end
+
+  --self:queueSmelt(items, fuels, fuelTiers)
 end
 
 m.processEvents = function(self, event)
