@@ -37,7 +37,7 @@ m.furnaceStack = {}
 
 m._timerID = nil
 m._furnaceTimers = {}
-m._pollRate = 10 -- seconds
+m._pollRate = 11 -- seconds
 
 --## Helper Functions ##--
 
@@ -314,6 +314,26 @@ m.smeltFromQueue = function(self, item, itemAmount, fuel, fuelAmount, furnace)
   return furnace.list()[2] == nil or furnace.list()[2].count < fuelAmount
 end
 
+m.errorCorrection = function(self)
+  for timer, furnace in pairs(self._furnaceTimers) do
+    if (furnace:isAvailable()) then
+      self._furnaceTimers[timer] = nil
+      furnace:emptySmelt(self.outputs)
+      local furnaceOnStack = false
+      for i, furnaceFromStack in ipairs(self.furnaceStack) do
+        if (peripheral.getName(furnace) == peripheral.getName(furnaceFromStack)) then
+          furnaceOnStack = true
+          print("Debug: error correction found furnace on stack already")
+          break
+        end
+      end
+      if (not furnaceOnStack) then
+        self.furnaceStack[#self.furnaceStack + 1] = furnace
+      end
+    end
+  end
+end
+
 m.queueSmelt = function(self, items, fuels, fuelTiers, furnace) --assign items and fuel to furnaces
   local itemIndex = 1
   
@@ -388,15 +408,17 @@ m.processInventory = function(self)
 end
 
 m.processEvents = function(self, event)
+  --if (event[1] == "timer") then print("Timer: " .. event[2]) end
   if (event[1] == "timer" and event[2] == self._timerID) then
-    print("Timer " .. event[2] .. " processed")
     self._timerID = os.startTimer(self._pollRate)
+    self._lastTimeSinceEpoch = os.epoch("utc")
+    self:errorCorrection()
     if (#self.furnaceStack > 0) then
       self:processInventory()
     end
   elseif (event[1] == "timer") then
     local furnace = self._furnaceTimers[event[2]]
-    print("Furnace " .. peripheral.getName(furnace) .. " finished")
+    if (furnace == nil) then return end
     self._furnaceTimers[event[2]] = nil
     furnace:emptySmelt(self.outputs)
     self.furnaceStack[#self.furnaceStack + 1] = furnace
