@@ -40,15 +40,10 @@ m._pollRate = 30 -- seconds
 --## Helper Functions ##--
 
 m.isFuel = function(self, name)
-  for fuelName, fuelAmount in pairs(self.fuelList) do
-    if (name == fuelName) then
-      return true
-    end
-  end
-  return false
+  return self.fuelList[name] ~= nil
 end
 
-m.fuelAmount = function(self, name)
+m.fuelTier = function(self, name)
   if (self.fuelList[name] ~= nil) then
     return self.fuelList[name]
   end
@@ -185,32 +180,38 @@ m.mapInventory = function(self) --separate inventory in input
   local items = {} -- items with fuel removed as an unsorted array, with name, count, slot and chest captured
   local fuels = {} -- fuels indexed by their fuel amount (sparce table), with the value being an array of all the fuels that match with their slot
   local fuelTiers = {} -- array in reverse sort of the different fuel levels, to be used in conjunction with {fuels}
-  for chesti,chest in ipairs(self.inputs) do
+  for chesti, chest in ipairs(self.inputs) do
     for slot, data in pairs(chest.list()) do
       local item = {name = data.name, count = data.count, pos = slot, chest = chest}
       if (self:isFuel(data.name)) then
         print("Found fuel " .. data.name .. " during mapping")
-        local amount = self:fuelAmount(data.name)
-        print("Fuel tier " .. amount)
-        if (fuels[amount] == nil) then
-          fuels[amount] = {}
-          print("Added tier " .. amount .. " to fuels")
+        local tier = self:fuelTier(data.name)
+        print("Fuel tier " .. tier)
+        if (fuels[tier] == nil) then
+          fuels[tier] = {}
+          print("Added tier " .. tier .. " to fuels")
         end
-        fuels[amount][#fuels[amount] + 1] = item
+        fuels[tier][#fuels[tier] + 1] = item
 
-        local addedAmount = false
-        for i = 1, #fuelTiers - 1 do -- add tiers in ascending order
-          if (amount > fuelTiers[i] and (fuelTiers[i + 1] == nil or amount < fuelTiers[i + 1])) then
-            table.insert(fuelTiers, i + 1, amount)
-            addedAmount = true
+        local addedTier = false
+        for i = 1, #fuelTiers do -- add tiers in ascending order
+          -- tier will run into list in ascending, so if it's less than index 2, it by default is less
+          -- than index > 2. we add at the earliest point we can
+          if (tier == fuelTiers[i]) then
+            addedTier = true
+            break
+          elseif (tier < fuelTiers[i]) then
+            table.insert(fuelTiers, i, tier)
+            addedTier = true
             break
           end
         end
-        if (not addedAmount) then
+        if (not addedTier) then -- assuming tier is > everything in the list
           fuelTiers[#fuelTiers + 1] = amount
         end
       else
         items[#items + 1] = item
+        print("Found item " .. data.name .. " during mapping")
       end
     end
   end
@@ -241,7 +242,7 @@ m.queueSmelt = function(self, items, fuels, fuelTiers) --assign items and fuel t
   while #self.furnaceStack > 0 do
     local furnace = self.furnaceStack[#self.furnaceStack]
     self.furnaceStack[#self.furnaceStack] = nil
-    if (furnace:isAvailable()) then
+    if (furnace:isAvailable() and items[itemIndex] ~= nil) then
       print("Furnace " .. peripheral.getName(furnace) .. " found.")
       for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
         local fuelTier = fuelTiers[i]
