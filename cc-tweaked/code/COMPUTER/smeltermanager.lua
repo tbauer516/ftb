@@ -355,7 +355,7 @@ m.processInventory = function(self)
     local success = self:smeltFromQueue(item, itemAmount, fuel, fuelAmount, furnace)
     if (success) then
       self.furnaceStack[#self.furnaceStack] = nil
-      os.queueEvent("furnace_queue", (10 * itemAmount) + 0.5, furnace.index)
+      os.queueEvent("timer_furnaceloaded", (10 * itemAmount) + 0.5, furnace.index)
     else
       self.blacklist[item.name] = true
       self:saveBlacklist()
@@ -363,12 +363,13 @@ m.processInventory = function(self)
       self:pushItemsToOutput(furnace, 2)
       break
     end
+    break
   end
 end
 
 m.processEvents = function(self)
   while true do
-    local event = {os.pullEvent("furnace_task")}
+    local event = {os.pullEvent("task_furnace")}
     if (#self._taskStack > 0) then
       local instruction = table.remove(self._taskStack, 1)
 
@@ -376,12 +377,17 @@ m.processEvents = function(self)
         if (#self.furnaceStack > 0) then
           self:processInventory()
         end
-      elseif (instruction.task == "furnace_empty") then
+      elseif (instruction.task == "furnace_complete") then
         local furnace = instruction.furnace
         self._furnaceTimers[instruction.timerID] = nil
         furnace:emptySmelt(self.outputs)
         self.furnaceStack[#self.furnaceStack + 1] = furnace
-        self:processInventory()
+        -- self:processInventory()
+        os.queueEvent("timer_furnaceavailable")
+      elseif (instruction.task == "furnace_load") then
+        if (#self.furnaceStack > 0) then
+          self:processInventory()
+        end
       end
     end
   end
@@ -390,19 +396,22 @@ end
 m.checkTimers = function(self)
   while true do
     local event = {os.pullEvent()}
-    if (event[1] == "furnace_queue") then
+    if (event[1] == "timer_furnaceloaded") then
       local newTimer = os.startTimer(event[2]) -- time for timer
       self._furnaceTimers[newTimer] = self.furnaces[event[3]] -- furnace
+    elseif (event[1] == "timer_furnaceavailable") then
+      table.insert(self._taskStack, {task = "furnace_load"})
+      os.queueEvent("task_furnace")
     elseif (event[1] == "timer") then
       print("Timer: " .. event[2])
       if (event[2] == self._timerID) then
         self._timerID = os.startTimer(self._pollRate)
         table.insert(self._taskStack, {task = "main_loop"})
-        os.queueEvent("furnace_task")
+        os.queueEvent("task_furnace")
       elseif (self._furnaceTimers[event[2]] ~= nil) then -- found furnace
         local furnace = self._furnaceTimers[event[2]]
-        table.insert(self._taskStack, {task = "furnace_empty", furnace = furnace, timerID = event[2]})
-        os.queueEvent("furnace_task")
+        table.insert(self._taskStack, {task = "furnace_complete", furnace = furnace, timerID = event[2]})
+        os.queueEvent("task_furnace")
       else
         print("Orphan Timer: " .. event[2])
       end
@@ -420,7 +429,11 @@ end
 m.run = function(self)
   term.clear()
   term.setCursorPos(1,1)
-  self._timerID = os.startTimer(0)
+  -- self._timerID = os.startTimer(0)
+  for i, furnace in ipairs(self.furnaces) do
+    table.insert(self._taskStack, {task = "furnace_load"})
+    os.queueEvent("task_furnace")
+  end
 
   parallel.waitForAny(
     function()
