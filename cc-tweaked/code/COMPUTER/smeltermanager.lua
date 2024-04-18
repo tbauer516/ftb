@@ -266,7 +266,7 @@ m.prioritizeFuels = function(self, fuels) --re-sort list of fuels for each tier
 end
 
 m.canSmelt = function(self, items, fuels, fuelTiers)
-  return #items > 0 and math.floor(items[1].count / fuelTiers[1]) > 0 and fuels[fuelTiers[1]][#fuels[fuelTiers[1]]].count * fuelTiers[1] > 1
+  return #items > 0 and math.floor(items[1].count / fuelTiers[1]) > 0 and fuels[fuelTiers[1]][#fuels[fuelTiers[1]]].count * fuelTiers[1] >= 1
 end
 
 m.getNextSmeltBundle = function(self, items, fuels, fuelTiers)
@@ -311,7 +311,7 @@ m.smeltFromQueue = function(self, item, itemAmount, fuel, fuelAmount, furnace)
   local itemsAdded = furnace:addItem(item.chest, item.pos, itemAmount)
   furnace:addFuel(fuel.chest, fuel.pos, fuelAmount)
   if (itemsAdded == nil or itemsAdded == 0) then return false end
-  --sleep(0.1)
+  sleep(0.1)
   return furnace.list()[2] == nil or furnace.list()[2].count < fuelAmount
 end
 
@@ -330,46 +330,6 @@ m.errorCorrection = function(self)
       end
       if (not furnaceOnStack) then
         self.furnaceStack[#self.furnaceStack + 1] = furnace
-      end
-    end
-  end
-end
-
-m.queueSmelt = function(self, items, fuels, fuelTiers, furnace) --assign items and fuel to furnaces
-  local itemIndex = 1
-  
-  for itemIndex = 1, #items do
-    if (not furnace:isAvailable()) then
-      break
-    end
-    for i = #fuelTiers, 1, -1 do -- go through fuels in descending order by amount they can smelt
-      local fuelTier = fuelTiers[i]
-      local maxFuelNeeded = math.floor(items[itemIndex].count / fuelTier)
-      if (maxFuelNeeded > 0) then
-        local actualFuelAvailable = math.min(fuels[fuelTier][#fuels[fuelTier]].count, maxFuelNeeded) -- assumes more items than fuels
-        local itemsPerFuelAvailable = math.floor(actualFuelAvailable * fuelTier)
-        actualFuelAvailable = math.floor(itemsPerFuelAvailable / fuelTier)
-        local itemsAdded = furnace:addItem(items[itemIndex].chest, items[itemIndex].pos, itemsPerFuelAvailable)
-        if (itemsAdded == 0) then
-          itemIndex = itemIndex + 1
-        else
-          self.furnaceStack[#self.furnaceStack] = nil
-          furnace:addFuel(fuels[fuelTier][#fuels[fuelTier]].chest, fuels[fuelTier][#fuels[fuelTier]].pos, actualFuelAvailable)
-          local newTimer = os.startTimer((10 * itemsAdded) + 1)
-          self._furnaceTimers[newTimer] = furnace
-          items[itemIndex].count = items[itemIndex].count - itemsPerFuelAvailable
-          fuels[fuelTier][#fuels[fuelTier]].count = fuels[fuelTier][#fuels[fuelTier]].count - actualFuelAvailable -- reduce count by used
-          
-          if (items[itemIndex].count == 0) then
-            itemIndex = itemIndex + 1
-          end
-          if (fuels[fuelTier][#fuels[fuelTier]].count == 0) then -- exhaust stack of fuel
-            table.remove(fuels[fuelTier], #fuels[fuelTier]) -- remove fuel from list and allow to move to next in list
-            if (#fuels[fuelTier] == 0) then -- ran out of fuel tier
-              table.remove(fuelTiers, i)
-            end
-          end
-        end
       end
     end
   end
@@ -403,8 +363,6 @@ m.processInventory = function(self)
       break
     end
   end
-
-  --self:queueSmelt(items, fuels, fuelTiers)
 end
 
 m.processEvents = function(self)
