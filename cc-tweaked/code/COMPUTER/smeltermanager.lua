@@ -139,6 +139,7 @@ m.getPeripherals = function(self)
         end
         return itemGrabbedCount
       end
+      furnace.index = #self.furnaces + 1
       self.furnaces[#self.furnaces + 1] = furnace
       self.furnaceStack[#self.furnaceStack + 1] = furnace
     elseif (string.find(v, "chest")) then  
@@ -393,7 +394,7 @@ m.processInventory = function(self)
     local success = self:smeltFromQueue(item, itemAmount, fuel, fuelAmount, furnace)
     if (success) then
       self.furnaceStack[#self.furnaceStack] = nil
-      os.queueEvent("furnace_queue", (10 * itemAmount) + 0.5, furnace)
+      os.queueEvent("furnace_queue", (10 * itemAmount) + 0.5, furnace.index)
     else
       self.blacklist[item.name] = true
       self:saveBlacklist()
@@ -406,7 +407,7 @@ m.processInventory = function(self)
   --self:queueSmelt(items, fuels, fuelTiers)
 end
 
-m.processEvents = function(self, event)
+m.processEvents = function(self)
   while true do
     local event = {os.pullEvent("furnace_task")}
     if (event[2] == "main_loop") then
@@ -414,19 +415,21 @@ m.processEvents = function(self, event)
         self:processInventory()
       end
     elseif (event[2] == "furnace_empty") then
-      local furnace = event[3]
+      local furnace = self.furnaces[event[3]]
       self._furnaceTimers[event[4]] = nil
       furnace:emptySmelt(self.outputs)
       self.furnaceStack[#self.furnaceStack + 1] = furnace
       self:processInventory()
     end
+  end
 end
 
-m.checkTimers = function(self, event)
+m.checkTimers = function(self)
   while true do
-    if (event[1] = "furnace_queue") then
+    local event = {os.pullEvent()}
+    if (event[1] == "furnace_queue") then
       local newTimer = os.startTimer(event[2]) -- time for timer
-      self._furnaceTimers[newTimer] = event[3] -- furnace
+      self._furnaceTimers[newTimer] = self.furnaces[event[3]] -- furnace
     elseif (event[1] == "timer") then
       print("Timer: " .. event[2])
       if (event[2] == self._timerID) then
@@ -434,7 +437,7 @@ m.checkTimers = function(self, event)
         os.queueEvent("furnace_task", "main_loop")
       elseif (self._furnaceTimers[event[2]] ~= nil) then -- found furnace
         local furnace = self._furnaceTimers[event[2]]
-        os.queueEvent("furnace_task", "furnace_empty", furnace, event[2])
+        os.queueEvent("furnace_task", "furnace_empty", furnace.index, event[2])
       else
         print("Orphan Timer: " .. event[2])
       end
@@ -454,17 +457,14 @@ m.run = function(self)
   term.setCursorPos(1,1)
   self._timerID = os.startTimer(0)
 
-  while true do
-    parallel.waitForAny(
-      function()
-        self:checkTimers(event)
-      end,
-      function()
-        local event = {os.pullEvent()}
-        self:processEvents(event)
-      end
-    )
-  end
+  parallel.waitForAny(
+    function()
+      self:checkTimers()
+    end,
+    function()
+      self:processEvents()
+    end
+  )
 end 
 
 --## Constructor Method ##--
