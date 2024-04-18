@@ -408,23 +408,12 @@ m.processInventory = function(self)
 end
 
 m.processEvents = function(self, event)
-  -- if (event[1] == "timer") then
-  --   print("Timer: " .. event[2])
-  --   if (self._timerLog == nil) then self._timerLog = {} end
-  --   self._timerLog[#self._timerLog + 1] = event[2]
-  --   table.sort(self._timerLog)
-  --   local handle = fs.open("timer.log", "w")
-  --   handle.write(textutils.serialize(self._timerLog))
-  --   handle.close()
-  -- end
-  if (event[1] == "timer" and event[2] == self._timerID) then
-    self._timerID = os.startTimer(self._pollRate)
-    self._lastTimeSinceEpoch = os.epoch("utc")
+  if (event[1] == "main_loop" and event[2] == self._timerID) then
     --self:errorCorrection()
     if (#self.furnaceStack > 0) then
       self:processInventory()
     end
-  elseif (event[1] == "timer") then
+  elseif (event[1] == "furnace_complete") then
     local furnace = self._furnaceTimers[event[2]]
     if (furnace == nil) then return end
     self._furnaceTimers[event[2]] = nil
@@ -451,6 +440,13 @@ m.checkTimers = function(self, event)
     handle.write(textutils.serialize(self._timerLog))
     handle.close()
   end
+  if (event[1] == "timer" and event[2] == self._timerID) then
+    self._timerID = os.startTimer(self._pollRate)
+    os.queueEvent("main_loop", event[2])
+  elseif (event[1] == "timer") then
+    local furnace = self._furnaceTimers[event[2]]
+    if (furnace == nil) then return end
+    os.queueEvent("furnace_complete", event[2])
 end
 
 m.run = function(self)
