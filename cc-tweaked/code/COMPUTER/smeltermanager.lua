@@ -408,15 +408,15 @@ m.processInventory = function(self)
 end
 
 m.processEvents = function(self, event)
-  if (event[1] == "timer") then
-    print("Timer: " .. event[2])
-    if (self._timerLog == nil) then self._timerLog = {} end
-    self._timerLog[#self._timerLog + 1] = event[2]
-    table.sort(self._timerLog)
-    local handle = fs.open("timer.log", "a")
-    handle.write(textutils.serialize(self._timerLog))
-    handle.close()
-  end
+  -- if (event[1] == "timer") then
+  --   print("Timer: " .. event[2])
+  --   if (self._timerLog == nil) then self._timerLog = {} end
+  --   self._timerLog[#self._timerLog + 1] = event[2]
+  --   table.sort(self._timerLog)
+  --   local handle = fs.open("timer.log", "w")
+  --   handle.write(textutils.serialize(self._timerLog))
+  --   handle.close()
+  -- end
   if (event[1] == "timer" and event[2] == self._timerID) then
     self._timerID = os.startTimer(self._pollRate)
     self._lastTimeSinceEpoch = os.epoch("utc")
@@ -441,14 +441,34 @@ m.processEvents = function(self, event)
   end
 end
 
+m.checkTimers = function(self, event)
+  if (event[1] == "timer") then
+    print("Timer: " .. event[2])
+    if (self._timerLog == nil) then self._timerLog = {} end
+    self._timerLog[#self._timerLog + 1] = event[2]
+    table.sort(self._timerLog)
+    local handle = fs.open("timer.log", "w")
+    handle.write(textutils.serialize(self._timerLog))
+    handle.close()
+  end
+end
+
 m.run = function(self)
   term.clear()
   term.setCursorPos(1,1)
   self._timerID = os.startTimer(0)
   
   while true do
-    local event = {os.pullEvent()}
-    self:processEvents(event)
+    parallel.waitForAny(
+      function()
+        local event = {os.pullEvent()}
+        self:checkTimers(event)
+      end,
+      function()
+        local event = {os.pullEvent()}
+        self:processEvents(event)
+      end
+    )
   end
 end 
 
