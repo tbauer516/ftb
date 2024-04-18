@@ -34,10 +34,11 @@ m.inputs = {}   -- subset of chests designated as input
 m.outputs = {}  -- subset of chests designated as output
 
 m.furnaceStack = {} -- queue of available furnaces
+m._taskStack = {}
 
 m._timerID = nil -- main loop
 m._furnaceTimers = {} -- index is timerID, value is furnace itself
-m._pollRate = 11 -- seconds
+m._pollRate = 7 -- seconds
 
 --## Helper Functions ##--
 
@@ -368,16 +369,20 @@ end
 m.processEvents = function(self)
   while true do
     local event = {os.pullEvent("furnace_task")}
-    if (event[2] == "main_loop") then
-      if (#self.furnaceStack > 0) then
+    if (#self._taskStack > 0) then
+      local instruction = table.remove(self._taskStack, 1)
+
+      if (instruction.task == "main_loop") then
+        if (#self.furnaceStack > 0) then
+          self:processInventory()
+        end
+      elseif (instruction.task == "furnace_empty") then
+        local furnace = instruction.furnace
+        self._furnaceTimers[instruction.timerID] = nil
+        furnace:emptySmelt(self.outputs)
+        self.furnaceStack[#self.furnaceStack + 1] = furnace
         self:processInventory()
       end
-    elseif (event[2] == "furnace_empty") then
-      local furnace = self.furnaces[event[3]]
-      self._furnaceTimers[event[4]] = nil
-      furnace:emptySmelt(self.outputs)
-      self.furnaceStack[#self.furnaceStack + 1] = furnace
-      self:processInventory()
     end
   end
 end
@@ -392,10 +397,12 @@ m.checkTimers = function(self)
       print("Timer: " .. event[2])
       if (event[2] == self._timerID) then
         self._timerID = os.startTimer(self._pollRate)
-        os.queueEvent("furnace_task", "main_loop")
+        table.insert(self._taskStack, {task = "main_loop"})
+        os.queueEvent("furnace_task")
       elseif (self._furnaceTimers[event[2]] ~= nil) then -- found furnace
         local furnace = self._furnaceTimers[event[2]]
-        os.queueEvent("furnace_task", "furnace_empty", furnace.index, event[2])
+        table.insert(self._taskStack, {task = "furnace_empty", furnace = furnace, timerID = event[2]})
+        os.queueEvent("furnace_task")
       else
         print("Orphan Timer: " .. event[2])
       end
