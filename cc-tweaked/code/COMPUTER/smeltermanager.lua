@@ -360,6 +360,7 @@ m.processInventory = function(self, mappedInventory)
   while (#self.furnaceStack > 0 and self:canSmelt(items, fuels, fuelTiers)) do
     local furnace = self.furnaceStack[#self.furnaceStack]
     local smeltBundle = self:getNextSmeltBundle(items, fuels, fuelTiers)
+    if (smeltBundle == nil) then break end
     local item = smeltBundle.item
     local fuel = smeltBundle.fuel
     local itemAmount = smeltBundle.itemAmount
