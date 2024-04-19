@@ -271,7 +271,7 @@ m.canSmelt = function(self, items, fuels, fuelTiers)
     for i, item in ipairs(items) do
       if (math.floor(item.count / fuelTiers[1]) > 0) then
         for j, fuelTier in ipairs(fuelTiers) do
-          for k, fuel in ipairs(fuel[fuelTier]) do
+          for k, fuel in ipairs(fuels[fuelTier]) do
             if (fuel.count * fuelTier >= 1) then
               return true
             end
@@ -296,10 +296,10 @@ m.getNextSmeltBundle = function(self, items, fuels, fuelTiers)
       if (fuel.count >= quantityNeeded and item.count >= fuelTier * quantityNeeded) then
         local fuelToUse = quantityNeeded
         local itemsToSmelt = fuelTier * fuelToUse
-        for i = quantityNeeded, fuel.count, quantityNeeded do
-          if (item.count >= fuelTier * i) then
-            fuelToUse = i
-            itemsToSmelt = fuelTier * i
+        for k = quantityNeeded, fuel.count, quantityNeeded do
+          if (item.count >= fuelTier * k) then
+            fuelToUse = k
+            itemsToSmelt = fuelTier * k
           else
             break
           end
