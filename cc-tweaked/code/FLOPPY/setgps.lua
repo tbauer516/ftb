@@ -44,7 +44,7 @@ local num = persistent.num or 0
 num = num + 1
 local x = persistent.x or tonumber(args[1])
 local z = persistent.z or tonumber(args[2])
-local y = 255
+local y = 319
 
 persistent.num = num
 persistent.x = x
@@ -76,7 +76,7 @@ elseif (num == 4) then
   turtle.forward()
   turtle.forward()
   z = z - 2
-  y = 253
+  y = y - 2
 end
 
 while turtle.up() do end
