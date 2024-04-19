@@ -267,7 +267,20 @@ m.prioritizeFuels = function(self, fuels) --re-sort list of fuels for each tier
 end
 
 m.canSmelt = function(self, items, fuels, fuelTiers)
-  return #items > 0 and math.floor(items[1].count / fuelTiers[1]) > 0 and fuels[fuelTiers[1]][#fuels[fuelTiers[1]]].count * fuelTiers[1] >= 1
+  if (#items > 0) then
+    for i, item in pairs(items) do
+      if (math.floor(item.count / fuelTiers[1]) > 0) then
+        for j, fuelTier in ipairs(fuelTiers) do
+          for k, fuel in ipairs(fuel[fuelTier]) do
+            if (fuel.count * fuelTier >= 1) then
+              return true
+            end
+          end
+        end
+      end
+    end
+  end
+  return false
 end
 
 m.getNextSmeltBundle = function(self, items, fuels, fuelTiers)
@@ -381,7 +394,6 @@ m.processTasks = function(self)
         self._furnaceTimers[instruction.timerID] = nil
         furnace:emptySmelt(self.outputs)
         self.furnaceStack[#self.furnaceStack + 1] = furnace
-        -- self:processInventory()
         os.queueEvent("timer_furnaceavailable")
       end
     end
