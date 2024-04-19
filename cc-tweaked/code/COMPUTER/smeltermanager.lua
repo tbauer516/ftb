@@ -268,7 +268,7 @@ end
 
 m.canSmelt = function(self, items, fuels, fuelTiers)
   if (#items > 0) then
-    for i, item in pairs(items) do
+    for i, item in ipairs(items) do
       if (math.floor(item.count / fuelTiers[1]) > 0) then
         for j, fuelTier in ipairs(fuelTiers) do
           for k, fuel in ipairs(fuel[fuelTier]) do
