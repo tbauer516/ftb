@@ -143,8 +143,14 @@ m.getPeripherals = function(self)
       furnace.index = #self.furnaces + 1
       self.furnaces[#self.furnaces + 1] = furnace
       self.furnaceStack[#self.furnaceStack + 1] = furnace
-    elseif (string.find(v, "chest")) then  
-      self.chests[#self.chests + 1] = v
+    else
+      local types = {peripheral.getType(v)}
+      for i = #types, 1, -1 do
+        if (types[i] == "inventory") then
+          self.chests[#self.chests + 1] = v
+          break
+        end
+      end 
     end
   end
 end
