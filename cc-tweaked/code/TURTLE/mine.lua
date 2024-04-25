@@ -17,6 +17,5 @@ end
 
 --## Main Runtime ##--
 
-t.cruiseAltitude = 1
 quarry = quarry:new(t, tonumber(args[1]), tonumber(args[2]), args[3])
 quarry:start()

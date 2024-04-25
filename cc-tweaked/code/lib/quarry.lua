@@ -3,15 +3,17 @@ local m = {}
 --## Variables to track state ##--
 m.t = nil -- placeholder for "t" module to go
 
-m.quarryLength = 1
-m.quarryWidth = 1
 
+m.bedrockDangerZone = 5
+m.surfaceBuffer = 5
 m.junkSlot = 15
 m.junkLimit = 10
 
+m.bedrockLoc = nil
 m.blacklist = {}
 
-m.continueMining = 1
+m.quarryLength = 1
+m.quarryWidth = 1
 
 m.blocksMined = 0
 
@@ -46,6 +48,36 @@ m.checkForBlacklist = function(self, blacklistName)
   end
 end
 
+-- check if it's an inventory. if yes, we suck until either it's empty, or we're out of room
+-- if it's empty, we have room, or it's not an inventory, we return "true" which means "mine it"
+-- if it is an inventory and we run out of room, return 'false' which means "don't mine it"
+m.suckHelper = function(self, side, suckFunc)
+  local types = {peripheral.getType(side)}
+  if (types == nil) then return true end
+
+  for i = #types, 1, -1 do
+    if (types[i] == "inventory") then
+      local emptySlot = self.t:getEmptySlot()
+      turtle.select(self.junkSlot)
+      while (emptySlot ~= nil and #peripheral.call(side, "list") > 0) do
+        while (suckFunc()) do end
+        if (side == "top" or side == "front") then
+          self:consolidate()
+        else
+          self:consolidateDropDir(turtle.drop)
+        end
+        emptySlot = self.t:getEmptySlot()
+      end
+      if (emptySlot ~= nil and #peripheral.call(side, "list") == 0) then -- have room and chest empty
+        return true
+      else
+        return false
+      end
+    end
+  end
+  return true
+end
+
 m.scanHelper = function(self, detectFunc, inspectFunc)
   if (detectFunc()) then
     local success, data = inspectFunc()
@@ -62,17 +94,59 @@ end
 
 m.scanU = function(self)
   if (self:scanHelper(turtle.detectUp, turtle.inspectUp)) then
-    turtle.digUp()
     return true
   end
   return false
 end
 m.scanD = function(self)
   if (self:scanHelper(turtle.detectDown, turtle.inspectDown)) then
-    turtle.digDown()
     return true
   end
   return false
+end
+m.scanF = function(self)
+  if (self:scanHelper(turtle.detect, turtle.inspect)) then
+    return true
+  end
+  return false
+end
+
+m.suckU = function(self)
+  if (self:suckHelper("top", turtle.suckUp)) then
+    return true
+  end
+  return false
+end
+m.suckD = function(self)
+  if (self:suckHelper("bottom", turtle.suckDown)) then
+    return true
+  end
+  return false
+end
+m.suckF = function(self)
+  if (self:suckHelper("front", turtle.suck)) then
+    return true
+  end
+  return false
+end
+
+m.mineBedrockColumn = function(self)
+  local columnTop = self.t:getLoc()
+  local success, value = pcall(function()
+    while (true) do
+      while (not self:suckF()) do
+        self:checkStorage()
+      end
+      if (self:scanF()) then
+        self.t:digF()
+      end
+      while (not self:suckD()) do
+        self:checkStorage()
+      end
+      self.t:mineD()
+    end
+  end)
+  self.t:moveTo(columnTop)
 end
 
 m.burrow = function(self)
@@ -80,20 +154,48 @@ m.burrow = function(self)
   self.t:mineD()
   turtle.select(self.junkSlot)
   turtle.placeUp()
-  turtle.select(self.junkSlot)
-  self.t:mineD()
-  self:scanD()
+
+  local success, value = pcall(function()
+    while (true) do
+      while (not self:suckD()) do
+        self:consolidate()
+        if (self:storageFull()) then
+          local burrowLoc = self.t:getLoc()
+          self.t:moveTo(self.initialLoc)
+          self:dumpItems()
+          self.t:mineD()
+          self.t:mineD()
+          turtle.select(self.junkSlot)
+          turtle.placeUp()
+          self.t:moveTo(burrowLoc)
+        end
+      end
+      self.t:mineD()
+    end
+  end)
+  self.bedrockLoc = self.t:getLoc()
+  self.bedrockLoc.y = self.bedrockLoc.y + self.bedrockDangerZone
+  self.t:moveTo(self.bedrockLoc)
 end
 
+-- don't want to hit anything on the way up
+-- move back 1 in case chest above/below, move down a level
+-- move to column of start, then move up
 m.returnToSurface = function(self)
   self.t:setStatus("Returning to surface")
   turtle.select(self.junkSlot)
   self.t.maxLoc = self.t:getLoc()
-  local vertical = self.t:getLoc()
-  vertical.y = self.initialLoc.y
-  self.t:checkFuel(vertical)
-  
+  local vertical = self.t:copyLoc(self.bedrockLoc)
+  if (self.t:getLoc().y < self.initialLoc.y - self.surfaceBuffer) then
+    vertical.y = math.max(self.bedrockLoc.y, self.t.maxLoc.y - 3)
+  else
+    vertical.y = self.t:getLoc().y
+  end
+  self.t:checkFuel(self.t.homeLoc)
   self.t:moveTo(vertical)
+
+  self.t:moveTo(self.initialLoc)
+  
   turtle.select(self.junkSlot)
   turtle.placeDown()
   turtle.select(self.junkSlot)
@@ -104,29 +206,36 @@ end
 
 m.returnToMine = function(self)
   self.t:setStatus("Returning to mine location")
-  local vertical = self.t:copyLoc(self.t.maxLoc)
-  vertical.y = self.initialLoc.y
-  self.t:cruiseTo(vertical)
-  self.t:checkFuel(self.t.maxLoc)
+  self.t:cruiseTo(self.initialLoc)
+
   turtle.select(self.junkSlot)
   self.t:mineD()
   self.t:mineD()
   turtle.select(self.junkSlot)
   turtle.placeUp()
 
+  self.t:checkFuel(self.t.maxLoc)
+  local vertical = self.t:copyLoc(self.bedrockLoc)
+  vertical.y = math.max(self.bedrockLoc.y, self.t.maxLoc.y - 3)
+  self.t:moveTo(vertical)
+  
   self.t:setStatus("Tunneling to previous location")
+  local belowMaxLoc = self.t:copyLoc(self.t.maxLoc)
+  belowMaxLoc.y = vertical.y
+  belowMaxLoc.d = vertical.d
+  self.t:moveTo(belowMaxLoc)
   self.t:moveTo(self.t.maxLoc)
   self.t:setStatus("Mining")
 end
 
-m.consolidate = function(self)
+m.consolidateDropDir = function(self, dropFunc)
   for i = 1, self.junkSlot - 1 do
     local details = turtle.getItemDetail(i)
     if (details ~= nil) then
       for j = 1, #self.blacklist do
         if (details["name"] == self.blacklist[j]) then
           turtle.select(i)
-          turtle.dropDown()
+          dropFunc()
         end
       end
       if (turtle.getItemCount(i) > 0) then
@@ -137,9 +246,13 @@ m.consolidate = function(self)
   local count = turtle.getItemCount(self.junkSlot)
   if (count > self.junkLimit) then
     turtle.select(self.junkSlot)
-    turtle.dropDown(count - self.junkLimit)
+    dropFunc(count - self.junkLimit)
   end
   turtle.select(self.junkSlot)
+end
+
+m.consolidate = function(self)
+  self:consolidateDropDir(turtle.dropDown)
 end
 
 m.dumpItems = function(self)
@@ -168,77 +281,104 @@ end
 
 m.start = function(self)
   self.t:setStatus("Mining")
-  self.continueMining = 1
   local starttime = os.clock()
   local quarrysuccess, quarryvalue = pcall(function()
 
-    self.t:checkFuel(self.t:calcLocD(4))
-    self:burrow()
+    self.t:checkFuel(self.t:calcLocD(300))
+    self:burrow() -- gets us to bedrock + dangerzone
   
-    local targetW = nil
     local initialD = self.t:getLoc().d
-    local wDir = nil
-    if (initialD == 0) then
-      targetW = 1
-      wDir = "z"
-    elseif (initialD == 2) then
-      targetW = -1
-      wDir = "z"
-    elseif (initialD == 1) then
-      targetW = -1
-      wDir = "x"
-    elseif (initialD == 3) then
-      targetW = 1
-      wDir = "x"
+    local wDir = 1
+    
+    if (self.bedrockDangerZone > 0) then -- do bedrock pattern across plane and back to end up in initial position
+      for planeI = 1, 2 do -- do the plane one direction, then do it again the other direction
+        for rowI = 1, self.quarryWidth do -- inside this loop == done once per row
+          for cellI = 1, self.quarryLength - 1 do -- inside this loop == done once per cell
+            self:mineBedrockColumn()
+            while (not self:suckF()) do
+              self:checkStorage()
+            end
+            self.t:mineF()
+          end
+
+          if (rowI < self.quarryWidth) then -- on every row but the last, turn around on the new row
+            local originalDir = self.t:getLoc()
+            self.t:turnTo((initialD + wDir) % 4)
+            self:mineBedrockColumn()
+            while (not self:suckF()) do
+              self:checkStorage()
+            end
+            self.t:mineF()
+            self.t:turnTo((originalDir.d + 2) % 4)
+            self.t:checkFuel(self.t.homeLoc)
+            self:checkStorage()
+          end
+        end
+
+        self.t:turnTo((self.t:getLoc().d + 2) % 4)
+        wDir = wDir * -1
+      end
     end
 
-    while (self.continueMining >= 0) do -- inside this loop == done once per level
+    while (true) do -- inside this loop == done once per level
   
-      for j = 1, self.quarryWidth do -- inside this loop == done once per row
+      for rowI = 1, self.quarryWidth do -- inside this loop == done once per row
         self:consolidate()
   
-        for i = 1, self.quarryLength - 1 do -- inside this loop == done once per cell
+        for cellI = 1, self.quarryLength - 1 do -- inside this loop == done once per cell
+          while (not self:suckF()) do
+            self:checkStorage()
+          end
           self.t:mineF()
-          self:scanU()
-          self:scanD()
+          while (not self:suckU()) do self:checkStorage() end
+          if (self:scanU()) then self.t:digU() end
+          while (not self:suckD()) do
+            self.t:moveB()
+            self:checkStorage()
+            self.t:moveF()
+          end
+          if (self:scanD()) then self.t:digD() end
           self.t:checkFuel(self.t.homeLoc)
           turtle.select(self.junkSlot)
           self:checkStorage()
         end
   
-        if (j < self.quarryWidth) then -- on every row but the last, turn around on the new row
-          local target = self.t:getLoc()
-          target["d"] = (target["d"] + 2) % 4
-          target[wDir] = target[wDir] + targetW
-          self.t:moveTo(target)
-          self:scanU()
-          self:scanD()
+        if (rowI < self.quarryWidth) then -- on every row but the last, turn around on the new row
+          local originalDir = self.t:getLoc()
+          self.t:turnTo((initialD + wDir) % 4)
+          while (not self:suckF()) do
+            self:checkStorage()
+          end
+          self.t:mineF()
+          while (not self:suckU()) do self:checkStorage() end
+          if (self:scanU()) then self.t:digU() end
+          while (not self:suckD()) do
+            self.t:moveB()
+            self:checkStorage()
+            self.t:moveF()
+          end
+          if (self:scanD()) then self.t:digD() end
+          self.t:turnTo((originalDir.d + 2) % 4)
           self.t:checkFuel(self.t.homeLoc)
+          self:checkStorage()
         end
       end
-  
-      -- check if on last level
-      if (self.continueMining <= 0) then
-        break
-      end
       
-      -- move down a level
-      self.t:moveR()
-      self.t:moveR()
-      local downsuccess, downvalue = pcall(function()
-        local targetLoc = self.t:getLoc()
-        targetLoc["y"] = targetLoc["y"] - 3
-        self.t:checkFuel(targetLoc)
-        self.t:mineD()
-        self.t:mineD()
-        self.t:mineD()
-      end)
-      self:scanD()
-      targetW = targetW * -1
-  
-      self.continueMining = self.continueMining - 1
-      if (downsuccess) then
-        self.continueMining = 1
+      -- move up a level
+      if (self.t:getLoc().y < self.initialLoc.y - self.surfaceBuffer) then -- if not at the top
+        self.t:moveR()
+        self.t:moveR()
+        while (not self:suckU()) do self:checkStorage() end
+        self.t:mineU()
+        while (not self:suckU()) do self:checkStorage() end
+        self.t:mineU()
+        while (not self:suckU()) do self:checkStorage() end
+        self.t:mineU()
+        while (not self:suckU()) do self:checkStorage() end
+        if (self:scanU()) then self.t:digU() end
+        wDir = wDir * -1
+      else
+        break
       end
     end
   end)

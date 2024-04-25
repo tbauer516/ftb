@@ -14,8 +14,8 @@ m.fuelSlot = 16
 --y is elevation and increases as turtle goes down, think of it like depth, + = down and - = up
 --z is left/right plane from initial position with + = right and - = left
 --d is direction, 0/2 is x plane, 1/3 is z plane. 0 is East, increasing as we go clockwise (i.e. 1 is South)
-m.curLoc = {x = 0, y = 0, z = 0, d = 0}
-m.maxLoc = {x = 0, y = 0, z = 0, d = 0}
+m.curLoc = {x = 0, y = 0, z = 0, d = 0} -- current location
+m.maxLoc = {x = 0, y = 0, z = 0, d = 0} -- placeholder to return to
 m.homeLoc = {x = 0, y = 0, z = 0, d = 0} -- does not change, for easy use
 m.cruiseAltitude = 0
 m.status = "Idle"
@@ -35,8 +35,8 @@ m.shouldDig = function(self, inspectFunc)
       return true
     end
     local foundBlacklist = false
-    for i,v in ipairs(self.globalBlacklist) do
-      if (string.find(data.name, v)) then
+    for i,blacklistItem in ipairs(self.globalBlacklist) do
+      if (string.find(data.name, blacklistItem)) then
         foundBlacklist = true
       end
     end
