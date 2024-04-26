@@ -18,6 +18,7 @@ m.quarryWidth = 1
 m.blocksMined = 0
 
 m.initialLoc = nil
+m.locFile = "initial.loc"
 
 --## Helper Functions ##--
 

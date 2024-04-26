@@ -18,4 +18,16 @@ end
 --## Main Runtime ##--
 
 quarry = quarry:new(t, tonumber(args[1]), tonumber(args[2]), args[3])
+
+if (fs.exists("startup.lua")) then
+  fs.delete("startup.lua")
+end
+fs.copy("rescue.lua", "startup.lua")
+
+
+t:saveLoc(quarry.initialLoc, quarry.locFile)
 quarry:start()
+
+fs.delete("startup.lua")
+fs.delete(quarry.locFile)
+fs.delete(t.locFile)

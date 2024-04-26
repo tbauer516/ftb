@@ -22,6 +22,7 @@ m.status = "Idle"
 
 m.fuelReserve = 100
 
+m.locFile = "current.loc"
 m.delayTimerID = nil
 
 --## Helper Functions ##--
@@ -69,6 +70,7 @@ end
 
 m.setLoc = function(self, newLoc)
   self.curLoc = newLoc
+  self:saveCurrLoc()
 end
 
 m.sendLoc = function(self)
@@ -249,6 +251,17 @@ end
 --## Public Functions ##--
 
 --## Location Functions ##--
+
+m.saveLoc = function(self, loc, filename)
+  local locString = textutils.serialize(loc)
+  local handle = fs.open(filename, "w")
+  handle.write(locString)
+  handle.close()
+end
+
+m.saveCurrLoc = function(self)
+  self:saveLoc(self:getLoc(), self.locFile)
+end
 
 m.calcLocU = function(self, dist)
   return {x = self.curLoc["x"], y = self.curLoc["y"] + dist, z = self.curLoc["z"], d = self.curLoc["d"]}
