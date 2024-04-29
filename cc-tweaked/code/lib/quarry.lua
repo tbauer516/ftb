@@ -295,6 +295,7 @@ m.start = function(self)
       for planeI = 1, 2 do -- do the plane one direction, then do it again the other direction
         for rowI = 1, self.quarryWidth do -- inside this loop == done once per row
           for cellI = 1, self.quarryLength - 1 do -- inside this loop == done once per cell
+            self:consolidate()
             self:mineBedrockColumn()
             while (not self:suckF()) do
               self:checkStorage()
@@ -305,6 +306,7 @@ m.start = function(self)
           if (rowI < self.quarryWidth) then -- on every row but the last, turn around on the new row
             local originalDir = self.t:getLoc()
             self.t:turnTo((initialD + wDir) % 4)
+            self:consolidate()
             self:mineBedrockColumn()
             while (not self:suckF()) do
               self:checkStorage()
