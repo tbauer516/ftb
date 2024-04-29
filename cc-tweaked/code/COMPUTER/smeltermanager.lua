@@ -19,6 +19,7 @@ local smelter = nil -- placeholder for instance
 local m = {}
 
 --## Variables to track state ##--
+m.combineStacksForCapacity = false
 m.blacklistFile = "blacklist.blist"
 m.fuelListDir = "" --can move to sub dir here if need be
 m.fuelListFile = "fuel.flist"
@@ -142,7 +143,6 @@ m.getPeripherals = function(self)
       end
       furnace.index = #self.furnaces + 1
       self.furnaces[#self.furnaces + 1] = furnace
-      self.furnaceStack[#self.furnaceStack + 1] = furnace
     elseif (pName ~= "bottom" and pName ~= "top" and pName ~= "left" and pName ~= "right" and pName ~= "front" and pName ~= "back") then
       local types = {peripheral.getType(pName)}
       for i = #types, 1, -1 do
@@ -204,6 +204,25 @@ m.assignChests = function(self)
   local handle = fs.open(self.chestDir .. self.coutputFile, "w")
   handle.write(textutils.serialize(self.outputs))
   handle.close()
+end
+
+m.checkFurnaces = function(self)
+  for i, furnace in ipairs(self.furnaces) do
+    if (furnace.list()[1] ~= nil) then
+      local newTimer = os.startTimer((10 * furnace.list()[1].count) + 0.5) -- time for timer
+      self._furnaceTimers[newTimer] = self.furnaces[furnace.index] -- furnace
+    else
+      for i, chest in ipairs(self.outputs) do
+        if (furnace.list()[2] ~= nil) then
+          furnace.pushItems(peripheral.getName(chest), 2)
+        end
+        if (furnace.list()[3] ~= nil) then
+          furnace.pushItems(peripheral.getName(chest), 3)
+        end
+      end
+      self.furnaceStack[#self.furnaceStack + 1] = furnace
+    end
+  end
 end
 
 m.pushItemsToOutput = function(self, originPeriph, slot)
@@ -302,6 +321,7 @@ m.getNextSmeltBundle = function(self, items, fuels, fuelTiers)
       if (fuel.count >= quantityNeeded and item.count >= fuelTier * quantityNeeded) then
         local fuelToUse = quantityNeeded
         local itemsToSmelt = fuelTier * fuelToUse
+        if (self.combineStacksForCapacity) then
         for k = quantityNeeded, fuel.count, quantityNeeded do
           if (item.count >= fuelTier * k) then
             fuelToUse = k
@@ -309,6 +329,7 @@ m.getNextSmeltBundle = function(self, items, fuels, fuelTiers)
           else
             break
           end
+        end
         end
         item.count = item.count - itemsToSmelt
         fuel.count = fuel.count - fuelToUse
@@ -447,7 +468,7 @@ m.run = function(self)
   term.clear()
   term.setCursorPos(1,1)
   self._timerID = os.startTimer(0)
-  for i, furnace in ipairs(self.furnaces) do
+  for i, furnace in ipairs(self.furnaceStack) do
     os.queueEvent("timer_furnaceavailable")
   end
 
@@ -484,6 +505,7 @@ if (args[1] == "run") then
   while (not smelter:hasChestsAssigned()) do
     smelter:assignChests()
   end
+  smelter:checkFurnaces()
   smelter:run()
 elseif (args[1] == "register") then
   smelter = m:new()
