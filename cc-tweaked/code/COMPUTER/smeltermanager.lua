@@ -115,9 +115,9 @@ m.register = function(self)
 end
 
 m.getPeripherals = function(self)
-  for k,v in ipairs(peripheral.getNames()) do
-    if (string.find(v, "furnace")) then
-      local furnace = peripheral.wrap(v)
+  for index, pName in ipairs(peripheral.getNames()) do
+    if (string.find(pName, "furnace")) then
+      local furnace = peripheral.wrap(pName)
       furnace.isAvailable = function(self)
         return self.list()[1] == nil and self.list()[2] == nil
       end
@@ -143,11 +143,11 @@ m.getPeripherals = function(self)
       furnace.index = #self.furnaces + 1
       self.furnaces[#self.furnaces + 1] = furnace
       self.furnaceStack[#self.furnaceStack + 1] = furnace
-    else
-      local types = {peripheral.getType(v)}
+    elseif (pName ~= "bottom" and pName ~= "top" and pName ~= "left" and pName ~= "right" and pName ~= "front" and pName ~= "back") then
+      local types = {peripheral.getType(pName)}
       for i = #types, 1, -1 do
         if (types[i] == "inventory") then
-          self.chests[#self.chests + 1] = v
+          self.chests[#self.chests + 1] = pName
           break
         end
       end 
