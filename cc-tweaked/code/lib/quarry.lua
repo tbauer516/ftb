@@ -4,7 +4,7 @@ local m = {}
 m.t = nil -- placeholder for "t" module to go
 
 
-m.bedrockDangerZone = 5
+m.bedrockDangerZone = 4 -- not y-choord, amount of buffer
 m.surfaceBuffer = 5
 m.junkSlot = 15
 m.junkLimit = 10
@@ -149,10 +149,15 @@ m.mineBedrockColumn = function(self)
       self.t:mineD()
     end
   end)
-  if (self.t:getLoc().y < self.maxY) then
-    self.maxY = self.t:getLoc().y
+  local bottomLoc = self.t:getLoc()
+  if (bottomLoc.y < self.maxY) then
+    self.maxY = bottomLoc.y
+    self.minY = self.maxY
   end
-  columnTop.y = self.maxY + self.bedrockDangerZone - 1
+  if (bottomLoc.y > self.minY) then
+    self.minY = bottomLoc.y
+  end
+  columnTop.y = self.maxY + self.bedrockDangerZone
   self.t:moveTo(columnTop)
 end
 
@@ -422,7 +427,7 @@ m.start = function(self)
     blockspadded = blockspadded .. " "
   end
   local h = fs.open("runlog", "a")
-  h.writeLine(sizepadded .. blockspadded .. runtime)
+  h.writeLine(sizepadded .. blockspadded .. runtime .. "  d-zone: " .. (self.minY - self.maxY))
   h.close()
 end
 
