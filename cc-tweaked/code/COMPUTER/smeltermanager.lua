@@ -373,8 +373,12 @@ m.processInventory = function(self, mappedInventory)
     local fuelAmount = smeltBundle.fuelAmount
     local success = self:smeltFromQueue(item, itemAmount, fuel, fuelAmount, furnace)
     if (success) then
+      local timeAmount = 10
+      if (string.find(pheripheral.getName(furnace), "blast_furnace")) then
+        timeAmount = 5
+      end
       self.furnaceStack[#self.furnaceStack] = nil
-      os.queueEvent("timer_furnaceloaded", (10 * itemAmount) + 0.5, furnace.index)
+      os.queueEvent("timer_furnaceloaded", (timeAmount * itemAmount) + 0.5, furnace.index)
     else
       self.blacklist[item.name] = true
       self:saveBlacklist()
