@@ -374,9 +374,9 @@ m.processInventory = function(self, mappedInventory)
     local success = self:smeltFromQueue(item, itemAmount, fuel, fuelAmount, furnace)
     if (success) then
       local timeAmount = 10
-      if (string.find(peripheral.getName(furnace), "blast_furnace")) then
-        timeAmount = 5
-      end
+      -- if (string.find(peripheral.getName(furnace), "blast_furnace")) then
+      --   timeAmount = 5
+      -- end
       self.furnaceStack[#self.furnaceStack] = nil
       os.queueEvent("timer_furnaceloaded", (timeAmount * itemAmount) + 0.5, furnace.index)
     else
