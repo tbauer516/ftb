@@ -301,6 +301,7 @@ m.start = function(self)
               self:checkStorage()
             end
             self.t:mineF()
+            self.t:checkFuel(self.t.homeLoc)
           end
 
           if (rowI < self.quarryWidth) then -- on every row but the last, turn around on the new row
