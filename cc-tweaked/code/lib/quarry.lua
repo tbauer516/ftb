@@ -11,6 +11,8 @@ m.junkLimit = 10
 
 m.bedrockLoc = nil
 m.blacklist = {}
+m.minY = 0
+m.maxY = 0
 
 m.quarryLength = 1
 m.quarryWidth = 1
@@ -147,6 +149,10 @@ m.mineBedrockColumn = function(self)
       self.t:mineD()
     end
   end)
+  if (self.t:getLoc().y < self.maxY) then
+    self.maxY = self.t:getLoc().y
+  end
+  columnTop.y = self.maxY + self.bedrockDangerZone - 1
   self.t:moveTo(columnTop)
 end
 
@@ -175,6 +181,8 @@ m.burrow = function(self)
     end
   end)
   self.bedrockLoc = self.t:getLoc()
+  self.minY = self.bedrockLoc.y + self.bedrockDangerZone
+  self.maxY = self.bedrockLoc.y
   self.bedrockLoc.y = self.bedrockLoc.y + self.bedrockDangerZone
   self.t:moveTo(self.bedrockLoc)
 end
