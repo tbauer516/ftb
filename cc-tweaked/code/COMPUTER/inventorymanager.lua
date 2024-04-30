@@ -35,10 +35,12 @@ m.interfaceFile = "interface.clist"
 
 m.getPeripherals = function(self)
   for i, name in ipairs(peripheral.getNames()) do
-    for j, pType in ipairs({peripheral.getType(name)}) do
-      if (pType == "inventory") then
-        table.insert(self.storageArray, peripheral.wrap(name))
-        break
+    if (name ~= "bottom" and name ~= "top" and name ~= "left" and name ~= "right" and name ~= "front" and name ~= "back") then
+      for j, pType in ipairs({peripheral.getType(name)}) do
+        if (pType == "inventory") then
+          table.insert(self.storageArray, peripheral.wrap(name))
+          break
+        end
       end
     end
   end
