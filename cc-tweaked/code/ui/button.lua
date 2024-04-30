@@ -13,7 +13,7 @@ m._y = nil
 m._w = nil
 m._h = nil
 m._label = nil
-m.type = "interact"
+m.type = {"click"}
 m._timerID = nil
 
 --## Private Functions

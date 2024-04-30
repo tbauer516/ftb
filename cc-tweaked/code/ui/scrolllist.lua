@@ -2,90 +2,48 @@ local m = {}
 
 m._fcolor = colors.white
 m._bcolor = colors.black
-m._lines = {}
+m._lines = {} -- array with each element having { display = "", value = ""}
+m._rawLines = {} -- display is display only, value is what is returned when clicked
 m._scrollpos = 1
 m._x = nil
 m._y = nil
 m._w = nil
 m._h = nil
-m.type = "interact"
+m.type = {"scroll","click"}
 
 --## Private Functions
 
-m._buildUI = function(self, win)
-  local w, h = win.getSize()
-
-  local ui = {}
-  
-  local empty = ""
-  for i = 1,w do
-    empty = empty .. " "
-  end
-
-  local index = 1
-  for i = 1,numLines do
-    if (index > #self._label) then break end
-    local row = string.sub(self._label, index, index + w - 3)
-    if (#row < w - 2) then
-      for j = 1,math.floor(((w - 2) - #row) / 2) do
-        row = " " .. row
-      end
-      for j = 1,(w - 2) - #row do
-        row = row .. " "
-      end
-    end
-    row = " " .. row .. " "
-    ui[#ui + 1] = row
-    index = index + w - 2
-  end
-
-  for i = 1,math.floor((h - #ui) / 2) do
-    table.insert(ui, empty)
-  end
-  for i = 1, h - #ui do
-    table.insert(ui, 1, empty)
-  end
-  self._ui = ui
-end
-
-m._displayToggle = function(self, win)
-  self:_buildUI(win)
-  local newFColor = self._fcolorOff
-  local newBColor = self._bcolorOff
-  if (self._state == 1) then
-    newFColor = self._fcolorOn
-    newBColor = self._bcolorOn
-  end
-
-  win.setCursorPos(1, 1)
-
-  win.setTextColor(newFColor)
-  win.setBackgroundColor(newBColor)
-  for i = 1, #self._ui do
-    win.write(self._ui[i])
-    win.setCursorPos(1, 1 + i)
-  end
-end
-
-m._click = function() end
+m._click = function() error("need to 'setClick' for the scrolllist") end
 
 --## Public Functions
+
+m.setLines = function(self, newLines)
+  self._rawLines = newLines
+  self._lines = newLines
+  self._scrollpos = 1
+end
+
+m.filterLines = function(self, filterString)
+  self._lines = {}
+  for i = 1, #self._rawLines do
+    local line = self._rawLines[i]
+    if (string.find(line.value, filterString, 1, true)) then
+      table.insert(self._lines, line)
+    end
+  end
+  self._scrollpos = 1
+end
 
 m.setClick = function(self, func)
   self._click = func
 end
 
 -- determines item clicked, pass it to downstream
+-- in main file, pass first variable with thing clicked and access in _click(arg1)
 m.click = function(self, win, x, y)
   local w, h = win.getSize()
   local winX, winY = win.getPosition()
-  win.clear()
-  win.setCursorPos(1,1)
-  win.write(x .. ", " .. y)
-  win.setCursorPos(1,2)
-  win.write(self._lines[self._scrollpos + y - winY])
-  self._click(self._lines[self._scrollpos + y - winY])
-  sleep(3)
+  self._click(self._lines[self._scrollpos + y - winY].value)
 end
 
 --dir: -1 is up, 1 is down
@@ -109,11 +67,11 @@ m.display = function(self, win)
   win.setTextColor(self._fcolor)
   win.setBackgroundColor(self._bcolor)
 
-  local max = h + self._scrollpos - 1
+  local max = math.min(h + self._scrollpos - 1, #self._lines)
   local lineIndex = 1
   for i = self._scrollpos, max do
     win.setCursorPos(1, lineIndex)
-    win.write(self._lines[i])
+    win.write(self._lines[i].display)
     lineIndex = lineIndex + 1
   end
 end
@@ -129,6 +87,7 @@ m.new = function(_, lines)
   if (lines == nil) then
     lines = {}
   end
+  o._rawLines = lines
   o._lines = lines
   return o
 end

@@ -14,7 +14,7 @@ m._colorBG = colors.gray
 m._colorLabelBG = colors.black
 m._colorFG = colors.white
 m._label = nil
-m.type = "non-interact"
+m.type = {"displayonly"}
 
 --## Private Functions
 

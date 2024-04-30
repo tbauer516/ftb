@@ -10,25 +10,6 @@ m.rows = {}
 
 --## Private Functions
 
-m._displayToggle = function(self, win)
-  self:_buildUI(win)
-  local newFColor = self._fcolorOff
-  local newBColor = self._bcolorOff
-  if (self._state == 1) then
-    newFColor = self._fcolorOn
-    newBColor = self._bcolorOn
-  end
-
-  win.setCursorPos(1, 1)
-
-  win.setTextColor(newFColor)
-  win.setBackgroundColor(newBColor)
-  for i = 1, #self._ui do
-    win.write(self._ui[i])
-    win.setCursorPos(1, 1 + i)
-  end
-end
-
 m._wrapOptions = function(self, val, min, max)
   if (min <= max and val < min) then
     val = max
@@ -74,6 +55,22 @@ m.changeOption = function(self, dir)
   elseif (self._selectedCol == 2) then
     self.rows[self._selectedRow]["type"] = self:_wrapOptions(self.rows[self._selectedRow]["type"] + dir, 1, #self._options)
   end
+end
+
+m.validate = function(self, results)
+  if (#self._lines == 1) then return true end
+  local total = 0
+  for i, option in ipairs(self._options) do
+    local optionTotal = 0
+    for j = 1, #results[option] do
+      if (results[option][j] == nil) then return false end
+      total = total + 1
+      optionTotal = optionTotal + 1
+    end
+    if (optionTotal == 0) then return false end
+  end
+  if (total ~= #self._lines) then return false end
+  return true
 end
 
 m.submit = function(self)
@@ -148,7 +145,15 @@ m.run = function(self, win)
       elseif (event[2] == keys.d) then
         self:selectCol(1)
       elseif (event[2] == keys.enter) then
-        return self:submit()
+        local results = self:submit()
+        if (self:validate(results)) then
+          return results
+        else
+          term.clear()
+          term.setCursorPos(1,1)
+          print("Did not pass validation")
+          sleep(2)
+        end
       end
     end
     self:display(win)
