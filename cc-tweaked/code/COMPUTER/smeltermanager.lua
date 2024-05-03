@@ -356,26 +356,6 @@ m.smeltFromQueue = function(self, item, itemAmount, fuel, fuelAmount, furnace)
   return furnace.list()[2] == nil or furnace.list()[2].count < fuelAmount
 end
 
-m.errorCorrection = function(self)
-  for timer, furnace in pairs(self._furnaceTimers) do
-    if (furnace:isAvailable()) then
-      self._furnaceTimers[timer] = nil
-      furnace:emptySmelt(self.outputs)
-      local furnaceOnStack = false
-      for i, furnaceFromStack in ipairs(self.furnaceStack) do
-        if (peripheral.getName(furnace) == peripheral.getName(furnaceFromStack)) then
-          furnaceOnStack = true
-          print("Debug: error correction found furnace on stack already")
-          break
-        end
-      end
-      if (not furnaceOnStack) then
-        self.furnaceStack[#self.furnaceStack + 1] = furnace
-      end
-    end
-  end
-end
-
 m.processInventory = function(self, mappedInventory)
   local items = mappedInventory.items
   local fuels = mappedInventory.fuels
@@ -443,7 +423,6 @@ m.checkTimers = function(self)
       os.queueEvent("task_furnace")
     elseif (event[1] == "timer") then
       
-      print("Timer: " .. event[2])
       if (event[2] ~= nil and event[2] == self._timerID) then
         self._timerID = os.startTimer(self._pollRate)
         table.insert(self._taskStack, {task = "furnace_checkinput"})
@@ -452,8 +431,6 @@ m.checkTimers = function(self)
         local furnace = self._furnaceTimers[event[2]]
         table.insert(self._taskStack, {task = "furnace_complete", furnace = furnace, timerID = event[2]})
         os.queueEvent("task_furnace")
-      else
-        print("Orphan Timer: " .. event[2])
       end
     elseif (event[1] == "key" and event[2] == keys.delete) then
       os.cancelTimer(self._timerID)
@@ -467,6 +444,7 @@ end
 m.run = function(self)
   term.clear()
   term.setCursorPos(1,1)
+  print("Smeltery is running.")
   self._timerID = os.startTimer(0)
   for i, furnace in ipairs(self.furnaceStack) do
     os.queueEvent("timer_furnaceavailable")
