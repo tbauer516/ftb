@@ -309,6 +309,8 @@ list1:setClick(function(lineItem)
   inventoryManager:itemPull(lineItem)
   inventoryManager:mapInventory()
   list1:setLines(inventoryManager:getInventoryList())
+  search1:clear()
+  ui:display(search1)
   ui:display(list1)
 end)
 

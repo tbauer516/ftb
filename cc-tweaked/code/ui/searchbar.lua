@@ -35,6 +35,10 @@ m.keyboard = function(self, eventName, character, isHeld)
   self._keyboard(self._currentText)
 end
 
+m.clear = function(self)
+  self._currentText = ""
+end
+
 m.display = function(self, win)
   win.clear()
   local w, h = win.getSize()
