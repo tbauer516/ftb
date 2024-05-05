@@ -272,6 +272,7 @@ local w, h = term.getSize()
 
 inventoryManager = m:new()
 
+local mon1 = peripheral.wrap("top")
 local hbar1 = hbar:new("Capacity")
 local button1 = button:newStatic("STORE")
 local button2 = button:newStatic("SORT")

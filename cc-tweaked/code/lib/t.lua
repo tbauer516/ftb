@@ -496,7 +496,7 @@ end
 --## Fuel Helpers ##--
 
 m.checkFuel = function(self, targetLoc, buffer)
-  if (buffer == nil) then buffer = 0 end
+  if (buffer == nil) then buffer = self.fuelReserve end
   local dist = self:calcDist(targetLoc) + 20 + buffer
   if (turtle.getFuelLevel() <= dist) then
     turtle.select(self.fuelSlot)
