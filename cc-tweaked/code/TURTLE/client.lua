@@ -19,12 +19,18 @@ local lookup = function(action, params)
     t:setStatus("Cruising")
     t:cruiseTo(unpack(params))
   elseif (action == "MINE") then
-    -- local oldLoc = t:getLoc()
-    -- t:setLoc(t.homeLoc)
-    -- t.homeLoc = t:getLoc()
+    if (fs.exists("startup.lua")) then
+      fs.delete("startup.lua")
+    end
+    fs.copy("rescue.lua", "startup.lua")
+    
     local quarryinstance = quarry:new(t, unpack(params))
+    t:saveLoc(quarryinstance.initialLoc, quarryinstance.locFile)
     quarryinstance:start()
-    -- t:setLoc(oldLoc)
+    
+    fs.delete("startup.lua")
+    fs.delete(quarry.locFile)
+    fs.delete(t.locFile)
   elseif (action == "CRUISE") then
     t:setCruise(t.homeLoc.y + 3 + unpack(params))
   elseif (action == "ABORT") then
