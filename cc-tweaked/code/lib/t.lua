@@ -501,7 +501,7 @@ m.checkFuel = function(self, targetLoc, buffer)
   if (turtle.getFuelLevel() <= dist) then
     turtle.select(self.fuelSlot)
     while (turtle.getFuelLevel() <= dist) do
-      if (turtle.getItemCount(self.fuelSlot) < 5) then
+      if (turtle.getItemCount(self.fuelSlot) < 2) then
         error("Out of fuel in slot")
       end
       turtle.refuel(1)
