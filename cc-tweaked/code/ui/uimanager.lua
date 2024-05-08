@@ -177,6 +177,10 @@ m.add = function(self, el, x, y, w, h, mon)
   self._elements[el][#self._elements[el] + 1] = win
 end
 
+m.clearQueue = function(self)
+  self._taskQueue = {}
+end
+
 m.displayAll = function(self)
   local renders = {}
   for el,wins in pairs(self._elements) do
