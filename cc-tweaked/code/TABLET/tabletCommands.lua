@@ -211,9 +211,9 @@ butMove4:setClick(function()
   local clients = getTurtlesForMove()
   if (#clients > 0) then
     local selected = selectTurtles(clients, 4)
-  --   if (#selected > 0) then
-  --     handleCommandMove(selected)
-  --   end
+    if (#selected > 0) then
+      handleCommandMove(selected)
+    end
   end
   ui:clearQueue()
   term.clear()
