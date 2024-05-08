@@ -6,7 +6,7 @@ local button = require("ui/button")
 local dependencies = {
   "ui/",
   "lib/",
-  "tabletSendMineLoc.lua",
+  -- "tabletSendMineLoc.lua",
   "tabletCommands.lua",
 }
 
@@ -189,9 +189,9 @@ if (not n:checkModem()) then
 end
 
 if (multishell) then
-  monitorShellID = shell.openTab("tabletSendMineLoc.lua")
-  multishell.setTitle(multishell.getCurrent(), "commands")
-  multishell.setTitle(monitorShellID, "send loc")
+  -- monitorShellID = shell.openTab("tabletSendMineLoc.lua")
+  -- multishell.setTitle(multishell.getCurrent(), "commands")
+  -- multishell.setTitle(monitorShellID, "send loc")
 end
 
 
@@ -211,10 +211,11 @@ butMove4:setClick(function()
   local clients = getTurtlesForMove()
   if (#clients > 0) then
     local selected = selectTurtles(clients, 4)
-    if (#selected > 0) then
-      handleCommandMove(selected)
-    end
+  --   if (#selected > 0) then
+  --     handleCommandMove(selected)
+  --   end
   end
+  ui:clearQueue()
   term.clear()
   ui:displayAll()
 end)
