@@ -35,7 +35,7 @@ m.farmBlock = function(self)
   else
     self.t:moveF()
     local data = {turtle.inspectDown()}
-    if (data[2] and data[2].state and data[2].state.age == 7) then
+    if (data[2] and data[2].state and (data[2].state.age == 7 or (data.name == "minecraft:beetroots" and data.state.age == 3))) then
       local old = self.t:getInventory()
       self.t:digD()
       local diffs = self.t:getInventoryDiff(old, self.t:getInventory())
