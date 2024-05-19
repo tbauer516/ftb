@@ -120,7 +120,7 @@ m.sendInstructionsForMine = function(self, clients, coords)
     local command = { { "CRUISE", { i } } }
 
     command[#command + 1] = { "MOVE", { coords[i] } }
-    command[#command + 1] = { "MINE", {coords[i].l, coords[i].w, "ftb"} }
+    command[#command + 1] = { "MINE", {coords[i].l, coords[i].w} }
 
     rednet.send(clients[i], command, self.request.instructions)
   end
