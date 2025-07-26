@@ -1,92 +1,112 @@
-local args = {...}
+local args = { ... }
 
 -- East X+
 -- South Z+
 
 local firstTime = true
-local persistent = {}
+local persistent = {} -- should be table
+local worldHeight = 319
 
-if (fs.exists("disk/gpsdata.txt")) then
-  local h = fs.open("disk/gpsdata.txt", "r")
-  local fileData = h.readAll()
-  h.close()
-  firstTime = false
-  persistent = textutils.unserialize(fileData)
+if fs.exists("disk/gpsdata.txt") then
+	local h = fs.open("disk/gpsdata.txt", "r")
+	local fileData = ""
+	if h ~= nil then
+		fileData = h.readAll() or ""
+		h.close()
+	end
+	firstTime = false
+	local fileDataUnserialized = textutils.unserialize(fileData)
+	if type(fileDataUnserialized) == "table" then
+		persistent = fileDataUnserialized
+	end
 end
 
-if (firstTime and #args ~= 2) then
-    print("usage: setgps <x> <z>")
-    print("while facing north")
-    error()
+if firstTime and (#args < 3 or #args > 4) then
+	print("usage: setgps <x> <y> <z> [<height>]")
+	print("face north. place turtle in NE corner.")
+	print("turtles will go 6 left and 6 back.")
+	error()
 end
 
-if (firstTime) then
-  fs.copy("disk/setgps.lua", "disk/startup.lua")
+if firstTime then
+	fs.copy("disk/setgps.lua", "disk/startup.lua")
 end
 
-os.setComputerLabel("GPS "..os.computerID())
+os.setComputerLabel("GPS " .. os.computerID())
 
-while turtle.getFuelLevel() < 300 do
-  term.clear()
-  term.setCursorPos(1,1)
-  print("Please add fuel. Fuel level: " .. turtle.getFuelLevel())
-  for i=1,16 do
-    if (turtle.getItemCount(i) > 0) then
-      turtle.select(i)
-      turtle.refuel()
-    end
-  end
-  sleep(1)
+if type(persistent) ~= "table" then
+	persistent = {}
 end
-term.clear()
 
 local num = persistent.num or 0
 num = num + 1
 local x = persistent.x or tonumber(args[1])
-local z = persistent.z or tonumber(args[2])
-local y = 319
+local y = persistent.y or tonumber(args[2])
+local initialY = y
+local z = persistent.z or tonumber(args[3])
+local heightCap = persistent.heightCap or tonumber(args[4]) or (worldHeight - y)
 
 persistent.num = num
 persistent.x = x
+persistent.y = y
 persistent.z = z
+persistent.heightCap = heightCap
 
-if (num == 4) then
-  fs.delete("disk/gpsdata.txt")
-  fs.delete("disk/startup.lua")
+while turtle.getFuelLevel() < heightCap * 2 do
+	term.clear()
+	term.setCursorPos(1, 1)
+	print("Please add fuel. Fuel level: " .. turtle.getFuelLevel())
+	for i = 1, 16 do
+		if turtle.getItemCount(i) > 0 then
+			turtle.select(i)
+			turtle.refuel()
+		end
+	end
+	sleep(1)
+end
+term.clear()
+
+if num == 4 then
+	fs.delete("disk/gpsdata.txt")
+	fs.delete("disk/startup.lua")
 else
-  local h = fs.open("disk/gpsdata.txt", "w")
-  h.write(textutils.serialize(persistent))
-  h.close()
+	local h = fs.open("disk/gpsdata.txt", "w")
+	if h ~= nil then
+		h.write(textutils.serialize(persistent))
+		h.close()
+	end
 end
 
-if (num == 1) then
-  turtle.forward()
-  turtle.forward()
-  turtle.turnLeft()
-  turtle.forward()
-  turtle.forward()
-  turtle.turnRight()
-  x = x - 2
-  z = z - 2
-elseif (num == 2) then
-  turtle.forward()
-  turtle.forward()
-  z = z - 2
-elseif (num == 4) then
-  turtle.forward()
-  turtle.forward()
-  z = z - 2
-  y = y - 2
+if num == 2 then
+	turtle.turnLeft()
+	for _ = 1, 6, 1 do
+		turtle.forward()
+	end
+	turtle.turnRight()
+	x = x - 6
+elseif num == 3 then
+	for _ = 1, 6, 1 do
+		turtle.back()
+	end
+	z = z + 6
 end
 
-while turtle.up() do end
+-- check until 1 below, then move up 1 to meet cap
+while (y - initialY < heightCap) and turtle.up() do
+	y = y + 1
+end
 
-if (num == 4) then
-  turtle.down()
+if num == 4 then
+	for _ = 1, 6, 1 do
+		turtle.down()
+	end
+	y = y - 6
 end
 
 local h = fs.open("startup", "w")
-h.writeLine("shell.run(\"gps\",\"host\",\"" .. x .. "\",\"" .. y .. "\",\"" .. z .. "\")")
-h.close()
+if h ~= nil then
+	h.writeLine('shell.run("gps","host","' .. x .. '","' .. y .. '","' .. z .. '")')
+	h.close()
+end
 
 os.reboot()
