@@ -315,14 +315,11 @@ m.checkFurnace = function(self, furnace)
 		self._furnaceTimers[newTimer] = furnace
 	else
 		for _, chest in ipairs(self.outputs) do
-			--			if furnace.peripheral.list()[furnace.fuelSlot] ~= nil then
 			furnace.peripheral.pushItems(peripheral.getName(chest), furnace.fuelSlot)
-			--			end
-			--			if furnace.peripheral.list()[furnace.outputSlot] ~= nil then
 			furnace.peripheral.pushItems(peripheral.getName(chest), furnace.outputSlot)
-			--			end
 		end
 		self.furnaceStack:push(furnace)
+		os.queueEvent("timer_furnaceavailable")
 	end
 end
 
@@ -455,12 +452,14 @@ end
 
 m.smeltFromQueue = function(_, item, itemAmount, fuel, fuelAmount, furnace)
 	local itemsAdded = furnace:addItem(item.chest, item.pos, itemAmount)
-	furnace:addFuel(fuel.chest, fuel.pos, fuelAmount)
+	local fuelAdded = furnace:addFuel(fuel.chest, fuel.pos, fuelAmount)
 	if itemsAdded == nil or itemsAdded == 0 then
 		return false
 	end
-	sleep(0.1)
-	return furnace.peripheral.list()[2] == nil or furnace.peripheral.list()[2].count < fuelAmount
+	if fuelAdded == nil or fuelAdded == 0 then
+		return false
+	end
+	return true
 end
 
 m.processInventory = function(self, mappedInventory)
@@ -518,7 +517,7 @@ end
 
 m.processTasks = function(self)
 	while true do
-		local event = { os.pullEvent("task_furnace") }
+		local _ = { os.pullEvent("task_furnace") }
 		while #self._taskStack > 0 do
 			local instruction = table.remove(self._taskStack, 1)
 
