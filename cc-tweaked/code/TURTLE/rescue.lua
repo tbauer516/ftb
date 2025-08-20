@@ -3,26 +3,44 @@ local quarry = require("lib/quarry")
 
 sleep(60)
 
-if (fs.exists(t.locFile)) then
-  local handleT = fs.open(t.locFile, "r")
-  local currLoc = textutils.unserialize(handleT.readAll())
-  handleT.close()
-  t:setLoc(currLoc)
+local currLoc = nil
+if fs.exists(t.locFile) then
+	local handleT = fs.open(t.locFile, "r")
+	if handleT ~= nil then
+		local handleTString = handleT.readAll()
+		if type(handleTString) == "string" then
+			local currLocTemp = textutils.unserialize(handleTString)
+			currLoc = currLocTemp
+		end
+		handleT.close()
+	end
+	t:setLoc(currLoc)
 
-  if (fs.exists(quarry.locFile)) then
-    local handleQ = fs.open(quarry.locFile, "r")
-    local targetLoc = textutils.unserialize(handleQ.readAll())
-    handleQ.close()
-    print("Performing rescue attempt...")
-    print("From: " .. t:getLocString(t:getLoc()))
-    print("To  : " .. t:getLocString(targetLoc))
-    local finalY = targetLoc.y
-    targetLoc.y = math.min(currLoc.y + quarry.bedrockDangerZone, finalY)
-    t:moveTo(targetLoc)
-    targetLoc.y = finalY
-    t:moveTo(targetLoc)
-    fs.delete("startup.lua")
-    fs.delete(quarry.locFile)
-    fs.delete(t.locFile)
-  end
+	local targetLoc = nil
+	if fs.exists(quarry.locFile) then
+		local handleQ = fs.open(quarry.locFile, "r")
+		if handleQ ~= nil then
+			local targetLocString = handleQ.readAll()
+			if type(targetLocString) == "string" then
+				targetLoc = textutils.unserialize(targetLocString)
+			end
+			handleQ.close()
+		end
+
+		print("Performing rescue attempt...")
+		print("From: " .. t:getLocString(t:getLoc()))
+		print("To  : " .. t:getLocString(targetLoc))
+
+		if targetLoc ~= nil and currLoc ~= nil then
+			local finalY = targetLoc.y
+			targetLoc.y = math.min(currLoc.y + quarry.bedrockDangerZone, finalY)
+			t:moveTo(targetLoc)
+			targetLoc.y = finalY
+			t:moveTo(targetLoc)
+			fs.delete("startup.lua")
+			fs.delete(quarry.locFile)
+			fs.delete(t.locFile)
+		end
+	end
 end
+
