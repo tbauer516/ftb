@@ -5,6 +5,7 @@ m.n = nil -- placeholder for networking module
 m.globalBlacklist = {
 	"computer",
 }
+m.blacklist = {}
 
 --## Variables to track state ##--
 
@@ -36,6 +37,36 @@ m.fail = function(self, errorMsg)
 end
 
 --## Mining Helpers ##--
+
+m.checkForBlacklist = function(self, blacklistName)
+	local blistPath = "blacklist/"
+	if fs.exists("disk/") then
+		blistPath = "disk/" .. blistPath
+	end
+	if blacklistName ~= nil then
+		if fs.exists(blistPath .. blacklistName .. ".blist") then
+			local handle = fs.open(blistPath .. blacklistName .. ".blist", "r")
+			if handle ~= nil then
+				local blacklistText = handle.readAll()
+				if type(blacklistText) == "string" then
+					self.blacklist = textutils.unserialize(blacklistText)
+				end
+				handle.close()
+			end
+		end
+	else
+		if fs.exists(blistPath .. "default.blist") then
+			local handle = fs.open(blistPath .. "default.blist", "r")
+			if handle ~= nil then
+				local blacklistText = handle.readAll()
+				if type(blacklistText) == "string" then
+					self.blacklist = textutils.unserialize(blacklistText)
+				end
+				handle.close()
+			end
+		end
+	end
+end
 
 m.shouldDig = function(self, inspectFunc)
 	for _ = 1, 50 do
@@ -80,6 +111,89 @@ m.moveHelper = function(self, move, attack, inspect)
 		self:sendLoc()
 	end
 	return true
+end
+
+-- check if it's an inventory. if yes, we suck until either it's empty, or we're out of room
+-- if it's empty, we have room, or it's not an inventory, we return "true" which means "mine it"
+-- if it is an inventory and we run out of room, return 'false' which means "don't mine it"
+m.suckHelper = function(self, side, suckFunc)
+	local types = { peripheral.getType(side) }
+	if types == nil then
+		return true
+	end
+
+	for i = #types, 1, -1 do
+		if types[i] == "inventory" then
+			local emptySlot = self.t:getEmptySlot()
+			turtle.select(self.junkSlot)
+			while emptySlot ~= nil and #peripheral.call(side, "list") > 0 do
+				while suckFunc() do
+				end
+				if side == "top" or side == "front" then
+					self:consolidate()
+				else
+					self:consolidateDropDir(turtle.drop)
+				end
+				emptySlot = self.t:getEmptySlot()
+			end
+			if emptySlot ~= nil and #peripheral.call(side, "list") == 0 then -- have room and chest empty
+				return true
+			else
+				return false
+			end
+		end
+	end
+	return true
+end
+
+m.scanHelper = function(self, detectFunc, inspectFunc)
+	if detectFunc() then
+		local _, data = inspectFunc()
+		for i = 1, #self.blacklist do
+			if self.blacklist[i] == data["name"] then
+				return false
+			end
+		end
+		return true
+	end
+end
+
+m.scanU = function(self)
+	if self:scanHelper(turtle.detectUp, turtle.inspectUp) then
+		return true
+	end
+	return false
+end
+m.scanD = function(self)
+	if self:scanHelper(turtle.detectDown, turtle.inspectDown) then
+		return true
+	end
+	return false
+end
+m.scanF = function(self)
+	if self:scanHelper(turtle.detect, turtle.inspect) then
+		return true
+	end
+	return false
+end
+
+m.suckU = function(self)
+	if self:suckHelper("top", turtle.suckUp) then
+		return true
+	end
+	return false
+end
+m.suckD = function(self)
+	if self:suckHelper("bottom", turtle.suckDown) then
+		return true
+	end
+	return false
+end
+m.suckF = function(self)
+	if self:suckHelper("front", turtle.suck) then
+		return true
+	end
+	return false
 end
 
 --## Networking Helpers ##--
@@ -440,15 +554,11 @@ m.mineU = function(self)
 	return self:moveU()
 end
 m.mineD = function(self)
-	if not self:digD() then
-		print("Unable to dig down")
-	end
+	self:digD()
 	return self:moveD()
 end
 m.mineF = function(self)
-	if not self:digF() then
-		print("Unable to dig forward")
-	end
+	self:digF()
 	return self:moveF()
 end
 

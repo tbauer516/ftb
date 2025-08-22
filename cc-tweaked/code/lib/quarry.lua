@@ -28,132 +28,17 @@ m.setQuarrySize = function(self, length, width)
 	self.quarryWidth = width
 end
 
-m.checkForBlacklist = function(self, blacklistName)
-	local blistPath = "blacklist/"
-	if fs.exists("disk/") then
-		blistPath = "disk/" .. blistPath
-	end
-	if blacklistName ~= nil then
-		if fs.exists(blistPath .. blacklistName .. ".blist") then
-			local handle = fs.open(blistPath .. blacklistName .. ".blist", "r")
-			if handle ~= nil then
-				local blacklistText = handle.readAll()
-				if type(blacklistText) == "string" then
-					self.blacklist = textutils.unserialize(blacklistText)
-				end
-				handle.close()
-			end
-		end
-	else
-		if fs.exists(blistPath .. "default.blist") then
-			local handle = fs.open(blistPath .. "default.blist", "r")
-			if handle ~= nil then
-				local blacklistText = handle.readAll()
-				if type(blacklistText) == "string" then
-					self.blacklist = textutils.unserialize(blacklistText)
-				end
-				handle.close()
-			end
-		end
-	end
-end
-
--- check if it's an inventory. if yes, we suck until either it's empty, or we're out of room
--- if it's empty, we have room, or it's not an inventory, we return "true" which means "mine it"
--- if it is an inventory and we run out of room, return 'false' which means "don't mine it"
-m.suckHelper = function(self, side, suckFunc)
-	local types = { peripheral.getType(side) }
-	if types == nil then
-		return true
-	end
-
-	for i = #types, 1, -1 do
-		if types[i] == "inventory" then
-			local emptySlot = self.t:getEmptySlot()
-			turtle.select(self.junkSlot)
-			while emptySlot ~= nil and #peripheral.call(side, "list") > 0 do
-				while suckFunc() do
-				end
-				if side == "top" or side == "front" then
-					self:consolidate()
-				else
-					self:consolidateDropDir(turtle.drop)
-				end
-				emptySlot = self.t:getEmptySlot()
-			end
-			if emptySlot ~= nil and #peripheral.call(side, "list") == 0 then -- have room and chest empty
-				return true
-			else
-				return false
-			end
-		end
-	end
-	return true
-end
-
-m.scanHelper = function(self, detectFunc, inspectFunc)
-	if detectFunc() then
-		local _, data = inspectFunc()
-		for i = 1, #self.blacklist do
-			if self.blacklist[i] == data["name"] then
-				return false
-			end
-		end
-		return true
-	end
-end
-
---## Public Functions ##--
-
-m.scanU = function(self)
-	if self:scanHelper(turtle.detectUp, turtle.inspectUp) then
-		return true
-	end
-	return false
-end
-m.scanD = function(self)
-	if self:scanHelper(turtle.detectDown, turtle.inspectDown) then
-		return true
-	end
-	return false
-end
-m.scanF = function(self)
-	if self:scanHelper(turtle.detect, turtle.inspect) then
-		return true
-	end
-	return false
-end
-
-m.suckU = function(self)
-	if self:suckHelper("top", turtle.suckUp) then
-		return true
-	end
-	return false
-end
-m.suckD = function(self)
-	if self:suckHelper("bottom", turtle.suckDown) then
-		return true
-	end
-	return false
-end
-m.suckF = function(self)
-	if self:suckHelper("front", turtle.suck) then
-		return true
-	end
-	return false
-end
-
 m.mineBedrockColumn = function(self)
 	local columnTop = self.t:getLoc()
 	local diggingDown = true
 	while diggingDown do
-		while not self:suckF() do
+		while not self.t:suckF() do
 			self:checkStorage()
 		end
-		if self:scanF() then
+		if self.t:scanF() then
 			self.t:digF()
 		end
-		while not self:suckD() do
+		while not self.t:suckD() do
 			self:checkStorage()
 		end
 		diggingDown = self.t:mineD()
@@ -178,7 +63,7 @@ m.burrow = function(self)
 
 	local diggingDown = true
 	while diggingDown do
-		while not self:suckD() do
+		while not self.t:suckD() do
 			self:consolidate()
 			if self:storageFull() then
 				local burrowLoc = self.t:getLoc()
@@ -317,7 +202,7 @@ m.start = function(self)
 					for cellI = 1, self.quarryLength - 1 do -- inside this loop == done once per cell
 						self:consolidate()
 						self:mineBedrockColumn()
-						while not self:suckF() do
+						while not self.t:suckF() do
 							self:checkStorage()
 						end
 						self.t:mineF()
@@ -329,7 +214,7 @@ m.start = function(self)
 						self.t:turnTo((initialD + wDir) % 4)
 						self:consolidate()
 						self:mineBedrockColumn()
-						while not self:suckF() do
+						while not self.t:suckF() do
 							self:checkStorage()
 						end
 						self.t:mineF()
@@ -349,22 +234,22 @@ m.start = function(self)
 				self:consolidate()
 
 				for cellI = 1, self.quarryLength - 1 do -- inside this loop == done once per cell
-					while not self:suckF() do
+					while not self.t:suckF() do
 						self:checkStorage()
 					end
 					self.t:mineF()
-					while not self:suckU() do
+					while not self.t:suckU() do
 						self:checkStorage()
 					end
-					if self:scanU() then
+					if self.t:scanU() then
 						self.t:digU()
 					end
-					while not self:suckD() do
+					while not self.t:suckD() do
 						self.t:moveB()
 						self:checkStorage()
 						self.t:moveF()
 					end
-					if self:scanD() then
+					if self.t:scanD() then
 						self.t:digD()
 					end
 					self.t:checkFuel(self.t.homeLoc)
@@ -375,22 +260,22 @@ m.start = function(self)
 				if rowI < self.quarryWidth then -- on every row but the last, turn around on the new row
 					local originalDir = self.t:getLoc()
 					self.t:turnTo((initialD + wDir) % 4)
-					while not self:suckF() do
+					while not self.t:suckF() do
 						self:checkStorage()
 					end
 					self.t:mineF()
-					while not self:suckU() do
+					while not self.t:suckU() do
 						self:checkStorage()
 					end
-					if self:scanU() then
+					if self.t:scanU() then
 						self.t:digU()
 					end
-					while not self:suckD() do
+					while not self.t:suckD() do
 						self.t:moveB()
 						self:checkStorage()
 						self.t:moveF()
 					end
-					if self:scanD() then
+					if self.t:scanD() then
 						self.t:digD()
 					end
 					self.t:turnTo((originalDir.d + 2) % 4)
@@ -403,22 +288,22 @@ m.start = function(self)
 			if self.t:getLoc().y < self.initialLoc.y - self.surfaceBuffer then -- if not at the top
 				self.t:moveR()
 				self.t:moveR()
-				while not self:suckU() do
+				while not self.t:suckU() do
 					self:checkStorage()
 				end
 				self.t:mineU()
-				while not self:suckU() do
+				while not self.t:suckU() do
 					self:checkStorage()
 				end
 				self.t:mineU()
-				while not self:suckU() do
+				while not self.t:suckU() do
 					self:checkStorage()
 				end
 				self.t:mineU()
-				while not self:suckU() do
+				while not self.t:suckU() do
 					self:checkStorage()
 				end
-				if self:scanU() then
+				if self.t:scanU() then
 					self.t:digU()
 				end
 				wDir = wDir * -1
@@ -469,10 +354,9 @@ m.new = function(self, t, l, w, bl)
 	self.__index = self
 	self.t = t
 	self:setQuarrySize(l, w)
-	self:checkForBlacklist(bl)
+	self.t:checkForBlacklist(bl)
 	self.initialLoc = self.t:getLoc()
 	return o
 end
 
 return m
-
