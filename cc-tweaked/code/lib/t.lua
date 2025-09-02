@@ -15,15 +15,22 @@ m.fuelSlot = 16
 --y is elevation and increases as turtle goes down, think of it like depth, + = down and - = up
 --z is left/right plane from initial position with + = right and - = left
 --d is direction, 0/2 is x plane, 1/3 is z plane. 0 is East, increasing as we go clockwise (i.e. 1 is South)
+m.dirString = {
+	[0] = "E",
+	[1] = "S",
+	[2] = "W",
+	[3] = "N",
+}
 m.curLoc = { x = 0, y = 0, z = 0, d = 0 } -- current location
 m.maxLoc = { x = 0, y = 0, z = 0, d = 0 } -- placeholder to return to
 m.homeLoc = { x = 0, y = 0, z = 0, d = 0 } -- does not change, for easy use
 m.cruiseAltitude = 0
-m.status = "Idle"
+m.status = "IDLE"
 
 m.fuelReserve = 100
 
 m.locFile = "current.loc"
+m.homeLocFile = "home.loc"
 m.delayTimerID = nil
 
 --## Helper Functions ##--
@@ -108,7 +115,7 @@ m.moveHelper = function(self, move, attack, inspect)
 		end
 	end
 	if self.n and self.n:checkModem() then
-		self:sendLoc()
+		self:sendStatus()
 	end
 	return true
 end
@@ -217,6 +224,32 @@ m.setStatus = function(self, newStatus)
 	self.status = newStatus
 end
 
+m.getStatus = function(self)
+	local statusDetails = {}
+	statusDetails.id = os.getComputerID()
+	local loc = self:getLoc()
+	loc.dString = self.dirString[loc.d]
+	statusDetails.loc = loc
+	statusDetails.fuel = turtle.getFuelLevel()
+	local inventory = {}
+	local inventoryTotal = 0
+	for i = 1, 16 do
+		if turtle.getItemCount(i) > 0 then
+			inventory[i] = turtle.getItemDetail(i)
+			inventoryTotal = inventoryTotal + inventory[i].count
+		end
+	end
+	statusDetails.inventory = inventory
+	statusDetails.inventoryTotal = inventoryTotal
+	statusDetails.status = self.status
+	return statusDetails
+end
+
+m.sendStatus = function(self)
+	local status = self:getStatus()
+	self.n:sendStatus(status)
+end
+
 m.findDir = function(self)
 	if self.n:checkGPS() then
 		if turtle.getFuelLevel() < 2 then
@@ -279,7 +312,7 @@ m.setLocFromGPS = function(self)
 		local dir = self:findDir()
 		local newLoc = { x = loc[1], y = loc[2], z = loc[3], d = dir }
 		self:setLoc(self:copyLoc(newLoc))
-		self.homeLoc = self:copyLoc(newLoc)
+		-- self.homeLoc = self:copyLoc(newLoc)
 	else
 		self:fail("No GPS detected")
 	end
@@ -402,6 +435,40 @@ m.saveCurrLoc = function(self)
 	self:saveLoc(self:getLoc(), self.locFile)
 end
 
+m.setHome = function(self)
+	self.homeLoc = self:getLoc()
+	self:saveLoc(self.homeLoc, self.homeLocFile)
+end
+
+m.loadLoc = function(self, filename)
+	local setLoc = nil
+	if fs.exists(filename) then
+		local h = fs.open(filename, "r")
+		if h ~= nil then
+			local str = h.readAll()
+			if type(str) == "string" then
+				setLoc = textutils.unserialize(str)
+			end
+			h.close()
+		end
+	end
+	return setLoc
+end
+
+m.loadCurrLoc = function(self)
+	local newLoc = self:loadLoc(self.locFile)
+	if newLoc ~= nil then
+		self:setLoc(newLoc)
+	end
+end
+
+m.loadHomeLoc = function(self)
+	local newLoc = self:loadLoc(self.homeLocFile)
+	if newLoc ~= nil then
+		self.homeLoc = newLoc
+	end
+end
+
 m.calcLocU = function(self, dist)
 	return { x = self.curLoc["x"], y = self.curLoc["y"] + dist, z = self.curLoc["z"], d = self.curLoc["d"] }
 end
@@ -495,7 +562,7 @@ m.moveB = function(self)
 end
 m.moveR = function(self)
 	local newLoc = self:calcLocR(1)
-	local success = turtle.turnRight()
+	local success = self:moveHelper(turtle.turnRight)
 	if success then
 		self:setLoc(newLoc)
 	end
@@ -503,7 +570,7 @@ m.moveR = function(self)
 end
 m.moveL = function(self)
 	local newLoc = self:calcLocL(1)
-	local success = turtle.turnLeft()
+	local success = self:moveHelper(turtle.turnLeft)
 	if success then
 		self:setLoc(newLoc)
 	end
@@ -648,7 +715,7 @@ m.new = function(self, n)
 	local o = {}
 	setmetatable(o, self)
 	self.__index = self
-	self.n = n
+	o.n = n
 	return o
 end
 

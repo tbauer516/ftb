@@ -3,6 +3,8 @@ local m = {}
 m.modem = nil
 m.gps = nil
 m.serverID = nil
+m.serverIDFile = "server-id.txt"
+m.statusProtocol = "turtle-status-v1"
 
 --## Request Constants ##--
 m.request = {
@@ -57,7 +59,38 @@ end
 
 m.getLoc = function(self)
 	local result = { gps.locate() }
-	return { x = result[1], y = result[2], z = result[3] }
+	return { x = math.floor(result[1]), y = math.floor(result[2]), z = math.floor(result[3]) }
+end
+
+m.genLoc = function(self, x, y, z, d)
+	return { x = x, y = y, z = z, d = d }
+end
+
+m.checkServerID = function(self)
+	if fs.exists(self.serverIDFile) then
+		local h = fs.open(self.serverIDFile, "r")
+		if h ~= nil then
+			local text = h.readAll()
+			self.serverID = tonumber(text)
+			h.close()
+		end
+	end
+end
+
+m.setServerID = function(self, id)
+	self.serverID = id
+	local h = fs.open(self.serverIDFile, "w")
+	if h ~= nil then
+		h.write(self.serverID)
+		h.close()
+	end
+end
+
+m.unsetServerID = function(self)
+	self.serverID = nil
+	if fs.exists(self.serverIDFile) then
+		fs.delete(self.serverIDFile)
+	end
 end
 
 --## Client-Server Related Functions ##--
@@ -81,11 +114,16 @@ m.waitForServerJob = function(self)
 end
 
 m.sendLoc = function(self, locObj)
-	-- if (self.serverID ~= nil) then
-	--   rednet.send(self.serverID, locObj, self.request.locUpdate)
-	-- else
-	-- end
-	rednet.broadcast(locObj, self.request.locUpdate)
+	if self.serverID ~= nil then
+		rednet.send(self.serverID, locObj, self.request.locUpdate)
+	end
+	-- rednet.broadcast(locObj, self.request.locUpdate)
+end
+
+m.sendStatus = function(self, status)
+	if self.serverID ~= nil then
+		rednet.send(self.serverID, status, self.statusProtocol)
+	end
 end
 
 --## Server Functions ##--
@@ -260,11 +298,10 @@ m.new = function(self)
 	setmetatable(o, self)
 	self.__index = self
 
-	self:initModem()
-	self:initGPS()
+	o:initModem()
+	o:initGPS()
 
 	return o
 end
 
 return m
-

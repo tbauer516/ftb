@@ -56,9 +56,9 @@ m.mineBedrockColumn = function(self)
 end
 
 m.burrow = function(self)
-	self.t:mineD()
-	self.t:mineD()
 	turtle.select(self.junkSlot)
+	self.t:mineD()
+	self.t:mineD()
 	turtle.placeUp()
 
 	local diggingDown = true
@@ -352,10 +352,11 @@ m.new = function(self, t, l, w, bl)
 	local o = {}
 	setmetatable(o, self)
 	self.__index = self
-	self.t = t
-	self:setQuarrySize(l, w)
-	self.t:checkForBlacklist(bl)
-	self.initialLoc = self.t:getLoc()
+	o.t = t
+	o:setQuarrySize(l, w)
+	o.t:checkForBlacklist(bl)
+	o.blacklist = o.t.blacklist
+	o.initialLoc = o.t:getLoc()
 	return o
 end
 
