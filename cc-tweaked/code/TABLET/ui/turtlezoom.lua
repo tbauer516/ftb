@@ -57,7 +57,7 @@ m._createWindow = function(self)
 		local newPos = self:getNewPos()
 		local newCard = m:_createTurtleCard(status, newPos.x, newPos.y)
 		self.elem[status.id] = newCard
-		newCard:render()
+		-- newCard:render()
 	end
 	self.update = function(self, status)
 		for elemName, elem in pairs(self.elem) do
@@ -84,10 +84,9 @@ m._createWindow = function(self)
 		table.insert(self.elem, elemInit(self))
 	end
 
-	table.insert(self.elem, self:placeholder(14, 9, 6, 3))
 	table.insert(self.elem, self:placeholder(7, 17, 6, 3))
 
-	self:render()
+	-- self:render()
 end
 
 m.templates = {}
@@ -407,6 +406,34 @@ m.templates._createMoveHere = function(self)
 			newLoc.d = status.loc.d
 			local cruiseHeight = math.max(newLoc.y, status.loc.y)
 			command:send(self.top.id, command.c.CRUISETO.gen(newLoc, cruiseHeight + 4))
+		end,
+	}
+end
+
+m.templates._createSetHome = function(self)
+	local newWin = window.create(self.win, 14, 9, 6, 3, true)
+	newWin.setBackgroundColor(colors.orange)
+	local elW, elH = newWin.getSize()
+	newWin.setCursorPos(1, 1)
+	for col = 1, elW do
+		for row = 1, elH do
+			newWin.setCursorPos(1, row)
+			if row == 2 then
+				newWin.write("  SET ")
+			elseif row == 3 then
+				newWin.write(" HOME ")
+			else
+				newWin.write(string.rep(" ", elW))
+			end
+		end
+	end
+
+	return {
+		win = newWin,
+		top = self,
+		render = function(self) end,
+		click = function(self)
+			command:send(self.top.id, command.c.SETHOME.gen())
 		end,
 	}
 end

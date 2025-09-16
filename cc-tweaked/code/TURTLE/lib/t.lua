@@ -83,7 +83,7 @@ m.shouldDig = function(self, inspectFunc)
 		end
 		local foundBlacklist = false
 		for _, blacklistItem in ipairs(self.globalBlacklist) do
-			if string.find(data.name, blacklistItem) then
+			if data.name == nil or string.find(data.name, blacklistItem) then
 				foundBlacklist = true
 			end
 		end
@@ -251,59 +251,89 @@ m.sendStatus = function(self)
 end
 
 m.findDir = function(self)
-	if self.n:checkGPS() then
-		if turtle.getFuelLevel() < 2 then
+	if not self.n:checkGPS() then
+		self:fail("Could not establish GPS")
+	end
+	if turtle.getFuelLevel() < 4 then
+		turtle.select(self.fuelSlot)
+		turtle.refuel(1)
+		turtle.select(15)
+		if turtle.getFuelLevel() < 4 then
 			self:fail("Please add fuel before beginning")
 		end
+	end
 
-		local trapped = false
-		local dirOffset = 0
-		local result = { gps.locate() }
-		local result2 = nil
+	local trapped = false
+	local dirOffset = 0
+	local upOffset = false
+	local result = { gps.locate() }
+	local result2 = nil
+	for i = 1, 2 do
 		if turtle.back() then
 			result2 = result
 			result = { gps.locate() }
-			turtle.forward()
+			while not turtle.forward() do
+				sleep(0.2)
+			end
 		elseif turtle.forward() then
 			result2 = { gps.locate() }
-			turtle.back()
+			while not turtle.back() do
+				sleep(0.2)
+			end
 		else
 			dirOffset = 1
 			turtle.turnLeft()
 			if turtle.back() then
 				result2 = result
 				result = { gps.locate() }
-				turtle.forward()
+				while not turtle.forward() do
+					sleep(0.2)
+				end
 			elseif turtle.forward() then
 				result2 = { gps.locate() }
-				turtle.back()
+				while not turtle.back() do
+					sleep(0.2)
+				end
 			else
-				trapped = true
+				if i == 1 then
+					dirOffset = 0
+					upOffset = turtle.up()
+				elseif i == 2 then
+					trapped = true
+				end
 			end
 			turtle.turnRight()
 		end
-
-		if trapped then
-			self:fail("Turtle is trapped!")
+		if not upOffset then
+			break
 		end
-
-		if result == nil or result2 == nil then
-			self:fail("Could not establish GPS")
-			error("fallback error message since fail did not work")
+		if i == 2 and upOffset then
+			while not turtle.down() do
+				sleep(0.2)
+			end
 		end
-
-		local dir = nil
-		if result2[1] > result[1] then -- moved east
-			dir = 0
-		elseif result2[1] < result[1] then -- moved west
-			dir = 2
-		elseif result2[3] > result[3] then -- moved south
-			dir = 1
-		elseif result2[3] < result[3] then -- moved north
-			dir = 3
-		end
-		return (dir + dirOffset) % 4
 	end
+
+	if trapped then
+		self:fail("Turtle is trapped!")
+	end
+
+	if result == nil or result2 == nil then
+		self:fail("Could not establish GPS")
+		error("fallback error message since fail did not work")
+	end
+
+	local dir = nil
+	if result2[1] > result[1] then -- moved east
+		dir = 0
+	elseif result2[1] < result[1] then -- moved west
+		dir = 2
+	elseif result2[3] > result[3] then -- moved south
+		dir = 1
+	elseif result2[3] < result[3] then -- moved north
+		dir = 3
+	end
+	return (dir + dirOffset) % 4
 end
 
 m.setLocFromGPS = function(self)
@@ -529,50 +559,62 @@ m.calcDist = function(self, target)
 end
 
 m.moveU = function(self)
+	local oldLoc = self:getLoc()
 	local newLoc = self:calcLocU(1)
+	self:setLoc(newLoc)
 	local success = self:moveHelper(turtle.up, turtle.attackUp, turtle.inspectUp)
-	if success then
-		self:setLoc(newLoc)
+	if not success then
+		self:setLoc(oldLoc)
 	end
 	return success
 end
 m.moveD = function(self)
+	local oldLoc = self:getLoc()
 	local newLoc = self:calcLocD(1)
+	self:setLoc(newLoc)
 	local success = self:moveHelper(turtle.down, turtle.attackDown, turtle.inspectDown)
-	if success then
-		self:setLoc(newLoc)
+	if not success then
+		self:setLoc(oldLoc)
 	end
 	return success
 end
 m.moveF = function(self)
+	local oldLoc = self:getLoc()
 	local newLoc = self:calcLocF(1)
+	self:setLoc(newLoc)
 	local success = self:moveHelper(turtle.forward, turtle.attack, turtle.inspect)
-	if success then
-		self:setLoc(newLoc)
+	if not success then
+		self:setLoc(oldLoc)
 	end
 	return success
 end
 m.moveB = function(self)
+	local oldLoc = self:getLoc()
 	local newLoc = self:calcLocB(1)
+	self:setLoc(newLoc)
 	local success = self:moveHelper(turtle.back)
-	if success then
-		self:setLoc(newLoc)
+	if not success then
+		self:setLoc(oldLoc)
 	end
 	return success
 end
 m.moveR = function(self)
+	local oldLoc = self:getLoc()
 	local newLoc = self:calcLocR(1)
+	self:setLoc(newLoc)
 	local success = self:moveHelper(turtle.turnRight)
-	if success then
-		self:setLoc(newLoc)
+	if not success then
+		self:setLoc(oldLoc)
 	end
 	return success
 end
 m.moveL = function(self)
+	local oldLoc = self:getLoc()
 	local newLoc = self:calcLocL(1)
 	local success = self:moveHelper(turtle.turnLeft)
-	if success then
-		self:setLoc(newLoc)
+	self:setLoc(newLoc)
+	if not success then
+		self:setLoc(oldLoc)
 	end
 	return success
 end

@@ -53,7 +53,7 @@ turtManager.addTurtle = function(self, id)
 			fuel = nil,
 			inventory = {},
 			inventoryTotal = nil,
-			status = nil,
+			status = "OFFLINE",
 		}
 		self.count = self.count + 1
 		if self.min == nil or id < self.min then
@@ -130,14 +130,28 @@ turtManager.new = function(self)
 	return o
 end
 
-local handleClick = function(pages, x, y, buttonPressed)
-	for cardIndex, card in pairs(pages.main.body.elem) do
+local handleClick = function(main, x, y, buttonPressed)
+	for cardIndex, card in pairs(main.body.elem) do
 		if card.subPage.win.isVisible() then
 			card.subPage:click(x, y, buttonPressed)
 			return
 		end
 	end
-	pages.main:click(x, y, buttonPressed)
+	main:click(x, y, buttonPressed)
+end
+
+local handleScroll = function(main, dir, x, y)
+	local w, h = main.body.win.getSize()
+	local cardCount = main.turtleManager:getCount()
+	local rowCount = math.ceil(cardCount / 3)
+	local lineCount = (rowCount * 3) + 1
+	if main.scroll + dir >= 0 and lineCount - h > 0 and main.scroll + dir <= lineCount - h then
+		main.scroll = main.scroll + dir
+		main.body.win.clear()
+		main.body:render()
+		-- main.body.win.setCursorPos(w - 1, h)
+		-- main.body.win.write(main.scroll)
+	end
 end
 
 --## Init ##--
@@ -148,12 +162,12 @@ turtleManager:loadTurtles()
 --## UI Section ##--
 
 local w, h = term.getSize()
-local pages = {}
-pages.main = uiMain:new(turtleManager)
+local main = uiMain:new(turtleManager)
 
-pages.main.win.setVisible(true)
+main.win.setVisible(true)
 
 for turtIndex, _ in pairs(turtleManager:getTurtles()) do
+	main.body:add(turtIndex)
 	command:send(turtIndex, command.c.CHECKREQ.gen())
 end
 
@@ -163,7 +177,7 @@ command.c.PAIRRES.han = function(self, toPair, status, id)
 	if toPair then
 		turtleManager:addTurtle(id)
 		turtleManager:updateStatus(id, status)
-		pages.main.body:add(id)
+		main.body:add(id)
 	end
 end
 
@@ -173,18 +187,18 @@ end
 
 command.c.CHECKRES.han = function(self, status, id)
 	turtleManager:updateStatus(id, status)
-	for elemID, elem in pairs(pages.main.body.elem) do
+	for elemID, elem in pairs(main.body.elem) do
 		if id == elem.id then
-			pages.main.body:update(status)
+			main.body:update(status)
 			return
 		end
 	end
-	pages.main.body:add(id)
+	main.body:add(id)
 end
 
 command.c.STATUSRES.han = function(self, status, id)
 	turtleManager:updateStatus(id, status)
-	pages.main.body:update(status)
+	main.body:update(status)
 end
 
 command.c.SENDMOVE.han = function(self, id, key)
@@ -240,13 +254,16 @@ local dispatcher = function()
 				end
 			end,
 			["mouse_click"] = function(buttonPressed, xCoord, yCoord)
-				handleClick(pages, xCoord, yCoord, buttonPressed)
+				handleClick(main, xCoord, yCoord, buttonPressed)
+			end,
+			["mouse_scroll"] = function(dir, xCoord, yCoord)
+				handleScroll(main, dir, xCoord, yCoord)
 			end,
 			["key"] = function(keyID, heldDown)
 				if keyID == keys.delete then
 					error({ message = "physical KILLswitch pressed", code = 500 })
 				elseif not heldDown then
-					for elemID, elem in pairs(pages.main.body.elem) do
+					for elemID, elem in pairs(main.body.elem) do
 						if elem.subPage.win.isVisible() and elem.subPage.controlling then
 							local turtleID = elem.subPage.id
 							table.insert(

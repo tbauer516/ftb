@@ -36,9 +36,7 @@ m.render = function(self)
 	for k, v in pairs(self.header.elem) do
 		v:render()
 	end
-	for k, v in pairs(self.body.elem) do
-		v:render()
-	end
+	self.body:render()
 end
 
 m._createWindow = function(self)
@@ -98,13 +96,17 @@ m._createWindow = function(self)
 			local adjustedPos = body:getPosByIndex(index)
 			local elem = body.elem[status.id]
 			if elem ~= nil then
+				elem.defaultX = adjustedPos.x
+				elem.defaultY = adjustedPos.y
 				elem.win.reposition(adjustedPos.x, adjustedPos.y)
 			end
 		end)
 		body.top:render()
 	end
 	self.body.update = function(self, status)
-		self.elem[status.id].subPage:render()
+		if status ~= nil and status.id ~= nil and self.elem[status.id] ~= nil then
+			self.elem[status.id].subPage:render()
+		end
 		local subPageVisible = false
 		for cardName, card in pairs(self.elem) do
 			if card.subPage.win.isVisible() then
@@ -113,6 +115,11 @@ m._createWindow = function(self)
 		end
 		if not subPageVisible then
 			self.elem[status.id]:render()
+		end
+	end
+	self.body.render = function()
+		for k, v in pairs(self.body.elem) do
+			v:render()
 		end
 	end
 	self.body.click = function(self, x, y, button)
@@ -126,6 +133,9 @@ m._createWindow = function(self)
 			local elX, elY = el.win.getPosition()
 			local elW, elH = el.win.getSize()
 			if x >= elX and x <= elX + elW - 1 and y - offset >= elY and y - offset <= elY + elH - 1 then
+				if self.top.turtleManager:getTurtle(el.id).status == "OFFLINE" then
+					break
+				end
 				el:click(x - winX - elX + 2, y - winY - elY + 2, button)
 				break
 			end
@@ -179,9 +189,12 @@ m.templates._createStatusSync = function(self)
 
 	return {
 		win = newWin,
+		top = self,
 		render = function(self) end,
-		click = function()
-			command:broadcast(command.c.STATUSREQ.gen())
+		click = function(self)
+			for elemID, elem in pairs(self.top.body.elem) do
+				command:send(elem.id, command.c.CHECKREQ.gen())
+			end
 		end,
 	}
 end
@@ -435,13 +448,22 @@ m._createTurtleCard = function(self, id, x, y)
 
 	return {
 		win = window.create(self.body.win, x, y, width, 2, true),
+		defaultX = x,
+		defaultY = y,
 		id = id,
 		top = self,
 		subPage = turtlePage:new(self, id),
 		render = function(self)
+			if self.top.scroll >= 0 then
+				self.win.reposition(self.defaultX, self.defaultY - self.top.scroll)
+			end
 			local status = self.top.turtleManager:getTurtle(self.id)
 			local selectColor = "ee"
-			if self.top.body.selected[status.id] == true then
+			if status.status == "OFFLINE" then
+				selectColor = "88"
+			elseif status.status ~= "IDLE" then
+				selectColor = "44"
+			elseif self.top.body.selected[status.id] == true then
 				selectColor = "dd"
 			end
 			self.win.setBackgroundColor(colors.gray)
@@ -462,8 +484,11 @@ m._createTurtleCard = function(self, id, x, y)
 		click = function(self, x, y)
 			local elX, elY = self.win.getPosition()
 			local elW, elH = self.win.getSize()
+			local status = self.top.turtleManager:getTurtle(self.id)
 			if x > elW - 2 and y < 2 then
-				if self.top.body.selected[self.id] == nil then
+				if status.status ~= "IDLE" then
+					return
+				elseif self.top.body.selected[self.id] == nil then
 					self.top.body.selected[self.id] = true
 				else
 					self.top.body.selected[self.id] = nil

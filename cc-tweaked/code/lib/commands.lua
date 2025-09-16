@@ -66,26 +66,16 @@ m.c = {
 		end,
 	},
 
-	IDLE = {
+	SKIP = {
+		priority = 1,
 		han = function(self)
-			for _ = 1, 5 do
-				self.t:moveB()
-				self.t:moveF()
-			end
+			error({ message = "task SKIP command received", code = 400 })
 		end,
 	},
 
 	RESETLOC = {
 		han = function(self)
 			self.t:setLocFromGPS()
-		end,
-	},
-
-	SPIN = {
-		han = function(self)
-			for _ = 1, 8 do
-				self.t:moveR()
-			end
 		end,
 	},
 
@@ -182,14 +172,24 @@ m.c = {
 			end
 			print("Would you like to pair computer: " .. senderID .. "?")
 			print("(y) yes, (n) no")
-			local event = { os.pullEvent("key") }
-			term.clear()
-			if event[2] == keys.y then
-				self.t.n:setServerID(senderID)
-				self:send(senderID, self.c.PAIRRES.gen(true, self.t:getStatus()))
-			else
-				self:send(senderID, self.c.PAIRRES.gen(false))
+			local timerID = os.startTimer(30)
+			while true do
+				local event = { os.pullEvent() }
+				if event[1] == "timer" and event[2] == timerID then
+					self:send(senderID, self.c.PAIRRES.gen(false))
+					break
+				elseif event[1] == "key" then
+					if event[2] == keys.y then
+						self.t.n:setServerID(senderID)
+						self:send(senderID, self.c.PAIRRES.gen(true, self.t:getStatus()))
+						break
+					else
+						self:send(senderID, self.c.PAIRRES.gen(false))
+						break
+					end
+				end
 			end
+			term.clear()
 		end,
 	},
 

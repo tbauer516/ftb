@@ -190,6 +190,7 @@ m.start = function(self)
 	self.t:setStatus("Mining")
 	local starttime = os.clock()
 	local quarrysuccess, quarryvalue = pcall(function()
+		self.bedrockLoc = self.t:getLoc()
 		self.t:checkFuel(self.t:calcLocD(500))
 		self:burrow() -- gets us to bedrock + dangerzone
 

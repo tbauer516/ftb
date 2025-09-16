@@ -100,12 +100,28 @@ end
 
 --## Main Runtime ##--
 
+if args[1] == nil then
+	local timerID = os.startTimer(math.random(5, 20))
+	while true do
+		local event = { os.pullEvent("timer") }
+		if event[2] == timerID then
+			break
+		end
+	end
+end
+
 os.setComputerLabel("" .. os.computerID())
+if not fs.exists("startup.lua") then
+	local h = fs.open("startup.lua", "w")
+	if h ~= nil then
+		h.write('shell.run("remote")')
+		h.close()
+	end
+end
 
 if not n:checkModem() then
 	error("Please run on a wireless mining turtle")
 end
-
 n:checkServerID()
 t:setLocFromGPS()
 t:loadHomeLoc()
