@@ -317,7 +317,7 @@ m.templates._createMineMulti = function(self)
 				end
 
 				local dir = mineCalc:getDir({ loc1.x, loc1.y, loc1.z }, { loc2.x, loc2.y, loc2.z })
-				local coords = mineCalc:divideClients(
+				local coords = mineCalc:divideClients2D(
 					{ loc1.x, loc1.y, loc1.z },
 					{ loc2.x, loc2.y, loc2.z },
 					dir,
@@ -325,6 +325,7 @@ m.templates._createMineMulti = function(self)
 				)
 				for i = 1, #coords do
 					local taskList = {
+						command.c.CHECKFUEL.gen(500),
 						command.c.SETHOME.gen(),
 						command.c.CRUISETO.gen(coords[i], assignedTurts[i].loc.y + 4 + i),
 						command.c.MINE.gen(coords[i].l, coords[i].w),
@@ -413,8 +414,10 @@ m.templates._createSelectAll = function(self)
 		render = function(self) end,
 		click = function(self)
 			local statusTurts = self.top.turtleManager:getTurtles()
-			for turtID, _ in pairs(statusTurts) do
-				self.top.body.selected[turtID] = true
+			for turtID, turt in pairs(statusTurts) do
+				if turt.status == "IDLE" then
+					self.top.body.selected[turtID] = true
+				end
 			end
 			self.top:render()
 		end,

@@ -493,6 +493,7 @@ m.templates._createMine = function(self)
 				local dir = mineCalc:getDir({ loc1.x, loc1.y, loc1.z }, { loc2.x, loc2.y, loc2.z })
 				local coords = mineCalc:divideClients({ loc1.x, loc1.y, loc1.z }, { loc2.x, loc2.y, loc2.z }, dir, 1)
 				local taskList = {
+					command.c.CHECKFUEL.gen(500),
 					command.c.SETHOME.gen(),
 					command.c.CRUISETO.gen(coords[1], status.loc.y + 4),
 					command.c.MINE.gen(coords[1].l, coords[1].w),

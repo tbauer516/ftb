@@ -133,6 +133,27 @@ m.c = {
 		end,
 	},
 
+	CHECKFUEL = {
+		han = function(self, dist)
+			local enoughFuel, levelDifference = self.t:checkFuelGraceful(self.t:calcLocD(dist))
+			local w, h
+			if not enoughFuel then
+				self.t:setStatus("FUEL 0")
+				self.t:sendStatus("FUEL 0")
+				w, h = term.getSize()
+			end
+			while not enoughFuel do
+				term.setCursorPos(1, h - 1)
+				term.write("Add fuel to slot 16...")
+				term.setCursorPos(1, h)
+				term.write(levelDifference * -1 .. " needed")
+				os.startTimer(5)
+				os.pullEvent("timer")
+				enoughFuel, levelDifference = self.t:checkFuelGraceful(self.t:calcLocD(dist))
+			end
+		end,
+	},
+
 	MINE = {
 		han = function(self, l, w)
 			local quarryinstance = quarry:new(self.t, l, w)

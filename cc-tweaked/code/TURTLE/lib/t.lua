@@ -78,7 +78,9 @@ end
 m.shouldDig = function(self, inspectFunc)
 	for _ = 1, 50 do
 		local success, data = inspectFunc()
-		if success and type(data) ~= "table" then
+		if not success then
+			return true
+		elseif success and type(data) ~= "table" then
 			return true
 		end
 		local foundBlacklist = false
@@ -635,7 +637,7 @@ m.digU = function(self)
 	return true
 end
 m.digD = function(self)
-	if turtle.detectDown() and self:shouldDig(turtle.inspectDown) then
+	if turtle.detectDown() and self:shouldDig(turtle.inspectDown) and turtle.detectDown() then
 		return turtle.digDown()
 	end
 	return true
@@ -718,7 +720,7 @@ m.moveTo = function(self, targetLoc)
 end
 
 m.cruiseTo = function(self, targetLoc)
-	self:checkFuel(
+	self:checkFuelGraceful(
 		targetLoc,
 		math.abs(self.curLoc.y - self.cruiseAltitude) + math.abs(self.cruiseAltitude - targetLoc.y)
 	)
@@ -735,7 +737,9 @@ end
 
 --## Fuel Helpers ##--
 
-m.checkFuel = function(self, targetLoc, buffer)
+-- TODO: goofy implementation that kills program. make it gracefully fail.
+
+m.checkFuelGraceful = function(self, targetLoc, buffer)
 	if buffer == nil then
 		buffer = self.fuelReserve
 	end
@@ -744,10 +748,18 @@ m.checkFuel = function(self, targetLoc, buffer)
 		turtle.select(self.fuelSlot)
 		while turtle.getFuelLevel() <= dist do
 			if turtle.getItemCount(self.fuelSlot) < 2 then
-				self:fail("Out of fuel in slot")
+				return false, turtle.getFuelLevel() - dist
 			end
 			turtle.refuel(1)
 		end
+	end
+	return true, turtle.getFuelLevel() - dist
+end
+
+m.checkFuel = function(self, targetLoc, buffer)
+	local success = self:checkFuelGraceful(targetLoc, buffer)
+	if not success then
+		self:fail("Out of fuel in slot")
 	end
 end
 
