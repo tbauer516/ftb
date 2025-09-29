@@ -42,6 +42,14 @@ m.broadcast = function(self, genCommand, protocol)
 	rednet.broadcast(genCommand, protocol)
 end
 
+m.s = {
+	OFFLINE = "88",
+	FUEL0 = "aa",
+	IDLE = "ee",
+	BUSY = "44",
+	SELECTED = "dd",
+}
+
 -- task params are arrays becuase "unpack" uses the index. can't be done with keys.
 m.c = {
 	NUKE = {
@@ -138,8 +146,8 @@ m.c = {
 			local enoughFuel, levelDifference = self.t:checkFuelGraceful(self.t:calcLocD(dist))
 			local w, h
 			if not enoughFuel then
-				self.t:setStatus("FUEL 0")
-				self.t:sendStatus("FUEL 0")
+				self.t:setStatus("FUEL0")
+				self.t:sendStatus("FUEL0")
 				w, h = term.getSize()
 			end
 			while not enoughFuel do

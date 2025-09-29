@@ -28,6 +28,39 @@ m.setQuarrySize = function(self, length, width)
 	self.quarryWidth = width
 end
 
+m.mineBedrockColumnDown = function(self)
+	local columnTop = self.t:getLoc()
+	local diggingDown = true
+	while diggingDown do
+		while not self.t:suckD() do
+			self:checkStorage()
+		end
+		diggingDown = self.t:mineD()
+	end
+	local bottomLoc = self.t:getLoc()
+	if bottomLoc.y < self.maxY then
+		self.maxY = bottomLoc.y
+		self.minY = self.maxY
+	end
+	if bottomLoc.y > self.minY then
+		self.minY = bottomLoc.y
+	end
+	columnTop.y = self.maxY + self.bedrockDangerZone
+end
+
+m.mineBedrockColumnUp = function(self)
+	local columnTopY = self.maxY + self.bedrockDangerZone
+	while self.t:getLoc().y < columnTopY do
+		while not self.t:suckF() do
+			self:checkStorage()
+		end
+		if self.t:scanF() then
+			self.t:digF()
+		end
+		self.t:moveU()
+	end
+end
+
 m.mineBedrockColumn = function(self)
 	local columnTop = self.t:getLoc()
 	local diggingDown = true
@@ -82,7 +115,7 @@ m.burrow = function(self)
 	self.minY = self.bedrockLoc.y + self.bedrockDangerZone
 	self.maxY = self.bedrockLoc.y
 	self.bedrockLoc.y = self.bedrockLoc.y + self.bedrockDangerZone
-	self.t:moveTo(self.bedrockLoc)
+	-- self.t:moveTo(self.bedrockLoc)
 end
 
 -- don't want to hit anything on the way up
@@ -192,7 +225,7 @@ m.start = function(self)
 	local quarrysuccess, quarryvalue = pcall(function()
 		self.bedrockLoc = self.t:getLoc()
 		self.t:checkFuel(self.t:calcLocD(500))
-		self:burrow() -- gets us to bedrock + dangerzone
+		self:burrow() -- gets us to bedrock
 
 		local initialD = self.t:getLoc().d
 		local wDir = 1
@@ -202,24 +235,30 @@ m.start = function(self)
 				for rowI = 1, self.quarryWidth do -- inside this loop == done once per row
 					for cellI = 1, self.quarryLength - 1 do -- inside this loop == done once per cell
 						self:consolidate()
-						self:mineBedrockColumn()
+						self:mineBedrockColumnUp()
 						while not self.t:suckF() do
 							self:checkStorage()
 						end
 						self.t:mineF()
 						self.t:checkFuel(self.t.homeLoc)
+
+						-- don't go down on very last column
+						if not (planeI == 2 and rowI == self.quarryWidth and cellI == self.quarryLength - 1) then
+							self:mineBedrockColumnDown()
+						end
 					end
 
 					if rowI < self.quarryWidth then -- on every row but the last, turn around on the new row
 						local originalDir = self.t:getLoc()
 						self.t:turnTo((initialD + wDir) % 4)
 						self:consolidate()
-						self:mineBedrockColumn()
+						self:mineBedrockColumnUp()
 						while not self.t:suckF() do
 							self:checkStorage()
 						end
 						self.t:mineF()
 						self.t:turnTo((originalDir.d + 2) % 4)
+						self:mineBedrockColumnDown()
 						self.t:checkFuel(self.t.homeLoc)
 						self:checkStorage()
 					end
@@ -228,6 +267,8 @@ m.start = function(self)
 				self.t:turnTo((self.t:getLoc().d + 2) % 4)
 				wDir = wDir * -1
 			end
+			self.bedrockLoc.y = self.maxY + self.bedrockDangerZone + 1
+			self.t:moveTo(self.bedrockLoc)
 		end
 
 		while true do -- inside this loop == done once per level

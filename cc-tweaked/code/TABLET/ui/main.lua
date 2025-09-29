@@ -465,14 +465,18 @@ m._createTurtleCard = function(self, id, x, y)
 				self.win.reposition(self.defaultX, self.defaultY - self.top.scroll)
 			end
 			local status = self.top.turtleManager:getTurtle(self.id)
-			local selectColor = "ee"
-			if status.status == "OFFLINE" then
-				selectColor = "88"
-			elseif status.status ~= "IDLE" then
-				selectColor = "44"
-			elseif self.top.body.selected[status.id] == true then
-				selectColor = "dd"
+			local selectColor = command.s.BUSY
+			if self.top.body.selected[self.id] == true then
+				selectColor = command.s.SELECTED
+			else
+				for statusText, color in pairs(command.s) do
+					if status.status == statusText then
+						selectColor = color
+						break
+					end
+				end
 			end
+
 			self.win.setBackgroundColor(colors.gray)
 			local elW, elH = self.win.getSize()
 			for i = 1, elH do
