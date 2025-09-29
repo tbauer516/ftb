@@ -142,6 +142,7 @@ m._createWindow = function(self)
 		end
 	end
 	self.body.selected = {}
+	self.body.lastSelected = nil
 
 	self.header.elem = {}
 
@@ -193,6 +194,9 @@ m.templates._createStatusSync = function(self)
 		render = function(self) end,
 		click = function(self)
 			for elemID, elem in pairs(self.top.body.elem) do
+				local turt = self.top.turtleManager:getTurtle(elem.id)
+				turt.status = "OFFLINE"
+				elem:render()
 				command:send(elem.id, command.c.CHECKREQ.gen())
 			end
 		end,
@@ -484,7 +488,7 @@ m._createTurtleCard = function(self, id, x, y)
 			self.win.setCursorPos(1, 2)
 			self.win.write(status.status .. string.rep(" ", width - string.len(status.status)))
 		end,
-		click = function(self, x, y)
+		click = function(self, x, y, button)
 			local elX, elY = self.win.getPosition()
 			local elW, elH = self.win.getSize()
 			local status = self.top.turtleManager:getTurtle(self.id)
@@ -493,8 +497,28 @@ m._createTurtleCard = function(self, id, x, y)
 					return
 				elseif self.top.body.selected[self.id] == nil then
 					self.top.body.selected[self.id] = true
+					if button == 3 and self.top.body.lastSelected ~= nil then
+						local one = self.top.body.lastSelected
+						local two = self.id
+						if one < two then
+							for i = one, two do
+								if self.top.body.elem[i] ~= nil then
+									self.top.body.selected[i] = true
+								end
+							end
+						else
+							for i = one, two, -1 do
+								if self.top.body.elem[i] ~= nil then
+									self.top.body.selected[i] = true
+								end
+							end
+						end
+					end
+					self.top.body.lastSelected = self.id
+					self.top.body:render()
 				else
 					self.top.body.selected[self.id] = nil
+					self.top.body.lastSelected = nil
 				end
 				self:render()
 			else
