@@ -133,45 +133,56 @@ m.divideClients2D = function(self, p1, p2, dir, numClients)
 			table.insert(coords, coord)
 		end
 	elseif numClients > diffs[w] and numClients <= (diffs[w] * diffs[l]) then -- turtles split length
-		local lengthMaxDivide = math.ceil((numClients - diffs[w]) / diffs[w]) + 1
-		local numLengthExtraSplit = (numClients - diffs[w]) % diffs[w]
+		local lengthMaxDivide = math.ceil((numClients - diffs[w]) / diffs[w]) + 1 -- factor by which to subdivide
+		local numLengthExtraSplit = (numClients - diffs[w]) % diffs[w] -- how many columns require an extra subdivide
 		if numLengthExtraSplit == 0 then
 			numLengthExtraSplit = diffs[w]
 		end
 		for i = 1, numLengthExtraSplit do
+			local remain = diffs[l] % lengthMaxDivide
+			local lastL = 0
 			for j = 1, lengthMaxDivide do
 				local coord = { x = p1[1], y = p1[2], z = p1[3], d = dir }
 				coord.w = 1
-				if j < lengthMaxDivide then
-					coord.l = math.ceil(diffs[l] / lengthMaxDivide)
-					coord[l] = coord[l] + (lDir * (j - 1))
-				else
-					coord.l = math.floor(diffs[l] / lengthMaxDivide)
-					coord[l] = coord[l] + (lDir * (diffs[l] - coord.l))
+				coord.l = math.floor(diffs[l] / lengthMaxDivide)
+				if j <= remain then
+					coord.l = coord.l + 1
 				end
+				coord[l] = coord[l] + (lDir * lastL)
+				lastL = lastL + coord.l
 				coord[w] = coord[w] + (wDir * (i - 1))
 
 				table.insert(coords, coord)
 			end
 		end
 		for i = numLengthExtraSplit + 1, diffs[w] do
+			local remain = diffs[l] % (lengthMaxDivide - 1)
+			local lastL = 0
 			for j = 1, lengthMaxDivide - 1 do
 				local coord = { x = p1[1], y = p1[2], z = p1[3], d = dir }
 				coord.w = 1
-				if j < lengthMaxDivide - 1 then
-					coord.l = math.ceil(diffs[l] / (lengthMaxDivide - 1))
-					coord[l] = coord[l] + (lDir * (j - 1))
-				else
-					coord.l = math.floor(diffs[l] / (lengthMaxDivide - 1))
-					coord[l] = coord[l] + (lDir * (diffs[l] - coord.l))
+				coord.l = math.floor(diffs[l] / (lengthMaxDivide - 1))
+				if j <= remain then
+					coord.l = coord.l + 1
 				end
+				coord[l] = coord[l] + (lDir * lastL)
+				lastL = lastL + coord.l
 				coord[w] = coord[w] + (wDir * (i - 1))
 
 				table.insert(coords, coord)
 			end
 		end
 	end
-	-- error({ message = coords[1].l .. "," .. coords[2].l .. "," .. coords[3].l, code = 500 })
+	local debug = false
+	if debug then
+		local message1 = ""
+		local message2 = ""
+		for _, coord in ipairs(coords) do
+			message1 = message1 .. coord.l .. ","
+			message2 = message2 .. coord[l] .. ","
+		end
+		error({ message = message1 .. "\n" .. message2, code = 500 })
+	end
 	return coords
 end
 
