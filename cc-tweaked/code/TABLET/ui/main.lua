@@ -158,14 +158,14 @@ end
 m.templates = {}
 
 m.templates._createPair = function(self)
-	local newWin = window.create(self.header.win, 1, 1, 6, 4, true)
+	local newWin = window.create(self.header.win, 1, 1, 6, 2, true)
 	newWin.setBackgroundColor(colors.yellow)
 	local elW, elH = newWin.getSize()
 	for i = 1, elH do
 		newWin.setCursorPos(1, i)
 		newWin.write(string.rep(" ", elW))
 	end
-	newWin.setCursorPos(1, 2)
+	newWin.setCursorPos(1, 1)
 	newWin.write(" PAIR ")
 
 	return {
@@ -178,14 +178,14 @@ m.templates._createPair = function(self)
 end
 
 m.templates._createStatusSync = function(self)
-	local newWin = window.create(self.header.win, 7, 1, 6, 4, true)
+	local newWin = window.create(self.header.win, 1, 3, 6, 2, true)
 	newWin.setBackgroundColor(colors.cyan)
 	local elW, elH = newWin.getSize()
 	for i = 1, elH do
 		newWin.setCursorPos(1, i)
 		newWin.write(string.rep(" ", elW))
 	end
-	newWin.setCursorPos(1, 2)
+	newWin.setCursorPos(1, 1)
 	newWin.write("STATUS")
 
 	return {
@@ -204,7 +204,7 @@ m.templates._createStatusSync = function(self)
 end
 
 m.templates._createMoveMulti = function(self)
-	local newWin = window.create(self.header.win, 13, 1, 6, 2, true)
+	local newWin = window.create(self.header.win, 7, 1, 6, 2, true)
 	newWin.setBackgroundColor(colors.blue)
 	local elW, elH = newWin.getSize()
 	for i = 1, elH do
@@ -258,6 +258,31 @@ m.templates._createMoveMulti = function(self)
 				)
 			end
 			self.top:render()
+		end,
+	}
+end
+
+m.templates._createHomeMulti = function(self)
+	local newWin = window.create(self.header.win, 7, 3, 6, 2, true)
+	newWin.setBackgroundColor(colors.orange)
+	local elW, elH = newWin.getSize()
+	for i = 1, elH do
+		newWin.setCursorPos(1, i)
+		newWin.write(string.rep(" ", elW))
+	end
+	newWin.setCursorPos(1, 1)
+	newWin.write(" HOME ")
+
+	return {
+		win = newWin,
+		top = self,
+		render = function(self) end,
+		click = function(self, _, _, button)
+			local selectedTurts = self.top.body.selected
+			for turtID, _ in pairs(selectedTurts) do
+				command:send(turtID, command.c.MOVEHOME.gen())
+			end
+			self.top.body.selected = {}
 		end,
 	}
 end
@@ -498,7 +523,11 @@ m._createTurtleCard = function(self, id, x, y)
 			local status = self.top.turtleManager:getTurtle(self.id)
 			if x > elW - 2 and y < 2 then
 				if status.status ~= "IDLE" then
-					return
+					if button == 2 then
+						self.top.body.selected[self.id] = true
+					else
+						return
+					end
 				elseif self.top.body.selected[self.id] == nil then
 					self.top.body.selected[self.id] = true
 					if button == 3 and self.top.body.lastSelected ~= nil then
@@ -517,9 +546,9 @@ m._createTurtleCard = function(self, id, x, y)
 								end
 							end
 						end
+						self.top.body:render()
 					end
 					self.top.body.lastSelected = self.id
-					self.top.body:render()
 				else
 					self.top.body.selected[self.id] = nil
 					self.top.body.lastSelected = nil

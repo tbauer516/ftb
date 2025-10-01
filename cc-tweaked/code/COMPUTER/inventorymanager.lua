@@ -120,12 +120,12 @@ m.getInventoryList = function(self)
 			displayCount = "999"
 		else
 			displayCount = tostring(count)
-			for _ = #count, 2 do
+			for _ = #displayCount, 2 do
 				displayCount = " " .. displayCount
 			end
 		end
 		local displayName = string.gsub(name, "(.*:)", "")
-		table.insert(tempList, { display = count .. " | " .. displayName, value = name, sortName = displayName })
+		table.insert(tempList, { display = displayCount .. " | " .. displayName, value = name, sortName = displayName })
 	end
 	table.sort(tempList, function(a, b)
 		return a.sortName < b.sortName
@@ -380,4 +380,3 @@ elseif args[1] == "test" then
 end
 
 return m
-
