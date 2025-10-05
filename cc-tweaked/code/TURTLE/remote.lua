@@ -101,7 +101,7 @@ end
 --## Main Runtime ##--
 
 if args[1] == nil then
-	local timerID = os.startTimer(math.random(5, 20))
+	local timerID = os.startTimer(math.random(1, 5))
 	while true do
 		local event = { os.pullEvent("timer") }
 		if event[2] == timerID then

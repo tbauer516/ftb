@@ -32,6 +32,22 @@ m.redraw = function(self)
 	end
 end
 
+m.getOpenSubPage = function(self)
+	local subPage = nil
+	for k, v in pairs(self.body.elem) do
+		if v.subPage.win.isVisible() then
+			subPage = v.subPage
+			break
+		end
+	end
+	return subPage
+end
+
+m.hasOpenSubPage = function(self)
+	local subPage = self:getOpenSubPage()
+	return subPage ~= nil
+end
+
 m.render = function(self)
 	for k, v in pairs(self.header.elem) do
 		v:render()
@@ -41,7 +57,7 @@ end
 
 m._createWindow = function(self)
 	local w, h = term.getSize()
-	self.win = window.create(term.native(), 1, 1, w, h, false)
+	self.win = window.create(term.current(), 1, 1, w, h, false)
 	self.win.setBackgroundColor(colors.black)
 	for i = 1, h do
 		self.win.setCursorPos(1, i)

@@ -145,7 +145,12 @@ local handleScroll = function(main, dir, x, y)
 	local cardCount = main.turtleManager:getCount()
 	local rowCount = math.ceil(cardCount / 3)
 	local lineCount = (rowCount * 3) + 1
-	if main.scroll + dir >= 0 and lineCount - h > 0 and main.scroll + dir <= lineCount - h then
+	if
+		not main:hasOpenSubPage()
+		and main.scroll + dir >= 0
+		and lineCount - h > 0
+		and main.scroll + dir <= lineCount - h
+	then
 		main.scroll = main.scroll + dir
 		main.body.win.clear()
 		main.body:render()
@@ -262,6 +267,8 @@ local dispatcher = function()
 			["key"] = function(keyID, heldDown)
 				if keyID == keys.delete then
 					error({ message = "physical KILLswitch pressed", code = 500 })
+				elseif keyID == keys.t then
+					command:send(27, command.c.TESTMODEM.gen())
 				elseif not heldDown then
 					for elemID, elem in pairs(main.body.elem) do
 						if elem.subPage.win.isVisible() and elem.subPage.controlling then
@@ -277,7 +284,7 @@ local dispatcher = function()
 			end,
 		}
 		if look[event[1]] ~= nil then
-			look[event[1]](event[2], event[3], event[4])
+			look[event[1]](table.unpack(event, 2))
 		end
 	end
 end

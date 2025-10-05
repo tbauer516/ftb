@@ -34,7 +34,7 @@ m._createWindow = function(self)
 	self.recordingLoc = nil
 
 	local w, h = term.getSize()
-	self.win = window.create(term.native(), 1, 1, w, h, false)
+	self.win = window.create(term.current(), 1, 1, w, h, false)
 	self.win.setBackgroundColor(colors.black)
 	for i = 1, h do
 		self.win.setCursorPos(1, i)
