@@ -737,8 +737,6 @@ end
 
 --## Fuel Helpers ##--
 
--- TODO: goofy implementation that kills program. make it gracefully fail.
-
 m.checkFuelGraceful = function(self, targetLoc, buffer)
 	if buffer == nil then
 		buffer = self.fuelReserve

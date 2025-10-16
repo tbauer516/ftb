@@ -41,6 +41,9 @@ m.handler = function(self)
 			local taskName = task[1]
 			local taskParams = task[2]
 			local taskFunc = self.handlerFuncs[taskName]
+			if taskFunc == nil then
+				error(taskName .. " does not exist as a handler")
+			end
 			if self.instance ~= nil then
 				taskFunc(self.instance, table.unpack(taskParams))
 			else

@@ -1,6 +1,5 @@
 local m = {}
 
-m._lines = {}
 m._options = {}
 m._scrollpos = 1
 m._selectedRow = 1
@@ -9,6 +8,17 @@ m.type = "interact"
 m.rows = {}
 
 --## Private Functions
+
+local stringsplit = function(inputstr, sep)
+	if sep == nil then
+		sep = "%s"
+	end
+	local t = {}
+	for str in string.gmatch(inputstr, "([^" .. sep .. "]+)") do
+		table.insert(t, str)
+	end
+	return t
+end
 
 m._wrapOptions = function(self, val, min, max)
 	if min <= max and val < min then
@@ -24,24 +34,33 @@ end
 --dir: -1 is up, 1 is down
 m.scroll = function(self, win, dir)
 	local w, h = win.getSize()
-	if h >= #self._lines then
+	if h >= #self.rows then
 		return
 	elseif self._selectedRow < self._scrollpos then -- up
 		self._scrollpos = self._selectedRow
-	elseif self._selectedRow > self._scrollpos + h - 1 and self._scrollpos <= (#self._lines - h) then -- down
+	elseif self._selectedRow > self._scrollpos + h - 1 and self._scrollpos <= (#self.rows - h) then -- down
 		self._scrollpos = self._selectedRow - h + 1
 	end
 end
 
 m.selectRow = function(self, dir)
+	local oldSelected = self._selectedRow
 	if dir == -1 and self._selectedRow > 1 then -- up
 		self._selectedRow = self._selectedRow - 1
-	elseif dir == 1 and self._selectedRow < #self._lines then -- down
+	elseif dir == 1 and self._selectedRow < #self.rows then -- down
 		self._selectedRow = self._selectedRow + 1
+	end
+
+	if self._selectedCol == 2 and self._options[self.rows[self._selectedRow].type] ~= "Filter" then
+		self._selectedRow = oldSelected
 	end
 end
 
 m.selectCol = function(self, dir)
+	if self._options[self.rows[self._selectedRow].type] ~= "Filter" then
+		self.rows[self._selectedRow].pair = 0
+		return
+	end
 	if dir == -1 and self._selectedCol > 1 then -- up
 		self._selectedCol = self._selectedCol - 1
 	elseif dir == 1 and self._selectedCol < 2 then -- down
@@ -53,30 +72,27 @@ m.changeOption = function(self, dir)
 	if self._selectedCol == 1 then
 		self.rows[self._selectedRow].type =
 			self:_wrapOptions(self.rows[self._selectedRow].type + dir, 1, #self._options)
+		if self._options[self.rows[self._selectedRow].type] ~= "Filter" then
+			self.rows[self._selectedRow].pair = 0
+		end
 	elseif self._selectedCol == 2 then
 		self.rows[self._selectedRow].pair = self:_wrapOptions(self.rows[self._selectedRow].pair + dir, 0, #self.rows)
 	end
 end
 
 m.validate = function(self, results)
-	if #self._lines == 1 then
-		return true
-	end
-	local total = 0
-	for i, option in ipairs(self._options) do
-		local optionTotal = 0
-		for j = 1, #results[option] do
-			if results[option][j] == nil then
-				return false
-			end
-			total = total + 1
-			optionTotal = optionTotal + 1
-		end
-		if optionTotal == 0 then
+	--find all filters and make sure they match up to an output
+	for _, row in ipairs(results.Filter) do
+		if self._options[self.rows[row.pair].type] ~= "Output" then
 			return false
 		end
 	end
-	if total ~= #self._lines then
+	-- track the outputs and filter out ones that are filtered
+	if #results.Output - #results.Filter ~= 1 then
+		return false
+	end
+	-- check if there's at least 1 input
+	if #results.Input < 1 then
 		return false
 	end
 	return true
@@ -84,20 +100,35 @@ end
 
 m.submit = function(self)
 	local results = {}
-	for k, v in ipairs(self._options) do
-		results[v] = {}
+	for _, category in ipairs(self._options) do
+		results[category] = {}
 	end
-	for k, v in ipairs(self.rows) do
-		local subTable = self._options[v.type]
-		local chest = { id = k, name = v.id }
-		if v.pair ~= 0 then
-			chest.pair = v.pair
+	for index, row in ipairs(self.rows) do
+		local subTable = self._options[row.type]
+		local chest = { id = index, name = row.name }
+		if row.pair ~= 0 then
+			chest.pair = row.pair
+			chest.pairName = self.rows[row.pair].name
 		end
 		table.insert(results[subTable], chest)
 	end
-	local pretty = require("cc.pretty")
-	pretty.pretty_print(results)
-	error()
+	for _, filter in ipairs(results["Filter"]) do
+		for _, output in ipairs(results["Output"]) do
+			if filter.pairName == output.name then
+				output.hasFilter = true
+			end
+		end
+	end
+
+	local debugmode = false
+	if debugmode then
+		for subTable, tableValues in pairs(results) do
+			print(subTable .. ":")
+			for _, chest in ipairs(tableValues) do
+				print("id: " .. chest.id .. ", chest:" .. chest.name .. ", pair: " .. (chest.pair or ""))
+			end
+		end
+	end
 	return results
 end
 
@@ -147,7 +178,8 @@ m.display = function(self, win)
 			col2 = " " .. col2 .. " "
 			col3 = " " .. col3 .. " "
 		end
-		win.write(col1 .. " | " .. col2 .. " | " .. col3 .. " | " .. self.rows[i].id)
+		local chestName = stringsplit(self.rows[i].name, ":")
+		win.write(col1 .. " | " .. col2 .. " | " .. col3 .. " | " .. chestName[#chestName])
 		lineIndex = lineIndex + 1
 	end
 end
@@ -188,20 +220,53 @@ end
 --## Constructor ##--
 
 --Common
-m.new = function(_, lines, options)
+m.new = function(_, lines, inputs, outputs, filters)
 	local o = {}
 	setmetatable(o, { __index = m })
 	if lines == nil then
 		lines = {}
 	end
-	o._lines = lines
-	o._options = options
+	o._options = { "Input", "Output", "Filter" }
 
-	for k, v in ipairs(lines) do
-		o.rows[k] = {}
-		o.rows[k].pair = 0
-		o.rows[k].type = 1
-		o.rows[k].id = v
+	local removed = {}
+	for i, subType in ipairs({ inputs, outputs, filters }) do
+		for _, chest in ipairs(subType) do
+			local index = chest.id
+			chest.type = i
+			if chest.pair == nil then
+				chest.pair = 0
+			end
+			local existing = false
+			for j, name in ipairs(lines) do
+				if chest.name == name then
+					existing = true
+					o.rows[index] = chest
+					table.remove(lines, j)
+					break
+				end
+			end
+			if not existing then
+				table.insert(removed, index)
+			end
+		end
+	end
+
+	if #removed > 0 then
+		for i = #removed, 1, -1 do
+			local toRemove = removed[i]
+			table.remove(o.rows, toRemove)
+		end
+		for _, chest in ipairs(o.rows) do
+			chest.pair = 0
+		end
+	end
+
+	for _, name in ipairs(lines) do
+		local newChest = {}
+		newChest.pair = 0
+		newChest.type = 1
+		newChest.name = name
+		table.insert(o.rows, newChest)
 	end
 
 	return o

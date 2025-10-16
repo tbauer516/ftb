@@ -19,6 +19,10 @@ local getModem = function()
 	end)
 end
 
+local getMonitors = function()
+	return peripheral.find("monitor")
+end
+
 local saveItems = function(itemPath, items)
 	local h = fs.open(itemPath, "w")
 	if h ~= nil then
@@ -116,21 +120,26 @@ master.dispatchers = {
 
 master.handlers = {
 	["master-satellite-add-satellite"] = function(self, senderID, params)
-		self.satellites[senderID] = params[1]
+		local securityLevel = params[1]
+		local location = params[2]
+		local satelliteData = { sec = securityLevel, loc = { x = location[1], y = location[2], z = location[3] } }
+		self.satellites[senderID] = satelliteData
 		self:saveSatellites()
 		rednet.send(senderID, { "satellite-master-confirm-master", {} }, badgeProtocol)
 	end,
 	["master-satellite-return-badge-list"] = function(self, senderID)
 		if self.satellites[senderID] ~= nil then
-			local satelliteSecurityLevel = self.satellites[senderID]
-			local badgeSecurityValid = {}
-			for badgeID, badgeSecurity in pairs(self.badges) do
-				if badgeSecurity <= satelliteSecurityLevel then
-					badgeSecurityValid[badgeID] = true
-				end
+			local badgeList = {}
+			for badgeID, _ in pairs(self.badges) do
+				badgeList[badgeID] = true
 			end
-			rednet.send(senderID, { "satellite-master-receive-badge-list", { badgeSecurityValid } }, badgeProtocol)
+			rednet.send(senderID, { "satellite-master-receive-badge-list", { badgeList } }, badgeProtocol)
 		end
+	end,
+	["master-satellite-validate-badge"] = function(self, senderID, params)
+		local badgeID = params[1]
+		local isAuthorized = self.badges[badgeID] <= self.satellites[senderID].sec
+		rednet.send(senderID, { "satellite-master-badge-validated", { isAuthorized } }, badgeProtocol)
 	end,
 	["master-badge-add-badge"] = function(self)
 		local newBadge = nil
@@ -188,6 +197,7 @@ local satellite = {}
 
 satellite.master = nil
 satellite.masterPath = "master.txt"
+satellite.monitors = {}
 satellite.modemSet = {}
 satellite.timers = {}
 
@@ -203,6 +213,9 @@ satellite.dispatchers = {
 		if hasInput and redstone.getInput("top") == false then
 			taskhandler:queueTask({ "satellite-master-get-badge-list", {} })
 		end
+	end,
+	["monitor_touch"] = function(self, side, x, y)
+		taskhandler:queueTask({ "satellite-master-get-badge-list", {} })
 	end,
 	["modem_message"] = function(self, side, channel, replychannel, message, distance)
 		if message.nMessageID == nil then
@@ -228,8 +241,8 @@ satellite.handlers = {
 	["satellite-shut-door"] = function()
 		redstone.setOutput("top", false)
 	end,
-	["satellite-master-request-add"] = function(self, senderID, securityLevel)
-		rednet.send(senderID, { "master-satellite-add-satellite", { securityLevel } }, badgeProtocol)
+	["satellite-master-request-add"] = function(self, senderID, securityLevel, location)
+		rednet.send(senderID, { "master-satellite-add-satellite", { securityLevel, location } }, badgeProtocol)
 	end,
 	["satellite-master-confirm-master"] = function(self, senderID)
 		self.master = senderID
@@ -247,27 +260,31 @@ satellite.handlers = {
 	["satellite-badge-receive-verification"] = function(self, senderID, task, distance)
 		if distance ~= nil then
 			if distance < 5.3 then
-				local badgeTimeoutTimer = os.startTimer(3)
-				self.timers[badgeTimeoutTimer] = { "satellite-timeout-badge", { senderID } }
-				self.modemSet[senderID] = badgeTimeoutTimer
+				self.modemSet[senderID] = true
 			end
 		else
 			if self.modemSet[senderID] ~= nil then
-				local badgeTimeoutTimer = self.modemSet[senderID]
-				os.cancelTimer(badgeTimeoutTimer)
 				self.modemSet[senderID] = nil
-				redstone.setOutput("top", true)
-				local doorTimer = os.startTimer(2)
-				self.timers[doorTimer] = { "satellite-shut-door", {} }
+				rednet.send(self.master, { "master-satellite-validate-badge", { senderID } }, badgeProtocol)
 			end
 		end
 	end,
-	["satellite-timeout-badge"] = function(self, senderID)
-		if self.modemSet[senderID] ~= nil then
-			local timerID = self.modemSet[senderID]
-			self.modemSet[senderID] = nil
-			self.timers[timerID] = nil
+	["satellite-master-badge-validated"] = function(self, senderID, params)
+		local isAuthorized = params[1]
+		if isAuthorized then
+			taskhandler:queueTask({ "satellite-open-door", {} })
 		end
+	end,
+	["satellite-open-door"] = function(self)
+		redstone.setOutput("top", true)
+		for timerID, instruction in pairs(self.timers) do
+			if instruction[1] == "satellite-shut-door" then
+				os.cancelTimer(timerID)
+				self.timers[timerID] = nil
+			end
+		end
+		local doorTimer = os.startTimer(1.5)
+		self.timers[doorTimer] = { "satellite-shut-door", {} }
 	end,
 }
 
@@ -289,8 +306,9 @@ satellite.assignMaster = function(self)
 		term.write("Enter security level: ")
 		securityLevel = tonumber(read())
 	end
+	local location = { gps.locate() }
 
-	taskhandler:queueTask({ "satellite-master-request-add", { newMaster, securityLevel } })
+	taskhandler:queueTask({ "satellite-master-request-add", { newMaster, securityLevel, location } })
 end
 
 satellite.saveMaster = function(self)
